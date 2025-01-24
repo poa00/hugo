@@ -7,8 +7,8 @@ keywords: []
 menu:
   docs:
     parent: render-hooks
-    weight: 60
-weight: 60
+    weight: 70
+weight: 70
 toc: true
 ---
 
@@ -22,15 +22,11 @@ A Markdown link has three components: the link text, the link destination, and o
   text    destination       title
 ```
 
-These components are passed into the render hook [context] as shown below.
-
-[context]: /getting-started/glossary/#context
+These components are passed into the render hook [context](g) as shown below.
 
 ## Context
 
 Link render hook templates receive the following context:
-
-[context]: /getting-started/glossary/#context
 
 ###### Destination
 
@@ -54,7 +50,7 @@ Link render hook templates receive the following context:
 
 ###### Text
 
-(`string`) The link description.
+(`template.HTML`) The link description.
 
 ###### Title
 
@@ -74,7 +70,7 @@ In its default configuration, Hugo renders Markdown links according to the [Comm
 <a href="{{ .Destination | safeURL }}"
   {{- with .Title }} title="{{ . }}"{{ end -}}
 >
-  {{- with .Text | safeHTML }}{{ . }}{{ end -}}
+  {{- with .Text }}{{ . }}{{ end -}}
 </a>
 {{- /* chomp trailing newline */ -}}
 {{< /code >}}
@@ -87,7 +83,7 @@ To include a `rel` attribute set to `external` for external links:
   {{- with .Title }} title="{{ . }}"{{ end -}}
   {{- if $u.IsAbs }} rel="external"{{ end -}}
 >
-  {{- with .Text | safeHTML }}{{ . }}{{ end -}}
+  {{- with .Text }}{{ . }}{{ end -}}
 </a>
 {{- /* chomp trailing newline */ -}}
 {{< /code >}}
@@ -113,12 +109,9 @@ The embedded link render hook is automatically enabled for multilingual single-h
 [duplication of shared page resources]: /getting-started/configuration-markup/#duplicateresourcefiles
 {{% /note %}}
 
-The embedded link render hook resolves internal Markdown destinations by looking for a matching page, falling back to a matching [page resource], then falling back to a matching [global resource]. Remote destinations are passed through, and the render hook will not throw an error or warning if it is unable to resolve a destination.
+The embedded link render hook resolves internal Markdown destinations by looking for a matching page, falling back to a matching [page resource](g), then falling back to a matching [global resource](g). Remote destinations are passed through, and the render hook will not throw an error or warning if unable to resolve a destination.
 
-[page resource]: /getting-started/glossary/#page-resource
-[global resource]: /getting-started/glossary/#global-resource
-
-You must place global resources in the assets directory. If you have placed your resources in the static directory, and you are unable or unwilling to move them, you must mount the static directory to the assets directory by including both of these entries in your site configuration:
+You must place global resources in the `assets` directory. If you have placed your resources in the `static` directory, and you are unable or unwilling to move them, you must mount the `static` directory to the `assets` directory by including both of these entries in your site configuration:
 
 {{< code-toggle file=hugo >}}
 [[module.mounts]]

@@ -556,6 +556,9 @@ func (c *collector) collectModulesTXT(owner Module) error {
 		line := scanner.Text()
 		line = strings.Trim(line, "# ")
 		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 		parts := strings.Fields(line)
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid modules list: %q", filename)
@@ -699,6 +702,9 @@ func (c *collector) normalizeMounts(owner *moduleAdapter, mounts []Mount) ([]Mou
 }
 
 func (c *collector) wrapModuleNotFound(err error) error {
+	if c.Client.ccfg.IgnoreModuleDoesNotExist {
+		return nil
+	}
 	err = fmt.Errorf(err.Error()+": %w", ErrNotExist)
 	if c.GoModulesFilename == "" {
 		return err

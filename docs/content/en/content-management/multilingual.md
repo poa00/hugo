@@ -21,15 +21,21 @@ This is the default language configuration:
 
 In the above, `en` is the language key.
 
-{{% note %}}
-Each language key must conform to the syntax described in [RFC 5646]. You must use hyphens to separate subtags. For example:
+Language keys must conform to the syntax described in [RFC 5646]. For example:
 
 - `en`
-- `en-GB`
-- `pt-BR`
+- `en-US`
+
+Artificial languages with private use subtags as defined in [RFC 5646 § 2.2.7] are also supported. Omit the `art-x-` prefix from the language key. For example:
+
+- `hugolang`
+
+{{% note %}}
+Private use subtags must not exceed 8 alphanumeric characters.
+{{% /note %}}
 
 [RFC 5646]: https://datatracker.ietf.org/doc/html/rfc5646#section-2.1
-{{% /note %}}
+[RFC 5646 § 2.2.7]: https://datatracker.ietf.org/doc/html/rfc5646#section-2.2.7
 
 This is an example of a site configuration for a multilingual project. Any key not defined in a `languages` object will fall back to the global value in the root of your site configuration.
 
@@ -73,7 +79,7 @@ defaultContentLanguageInSubdir
 : (`bool`)  If `true`, Hugo renders the default language site in a subdirectory matching the `defaultContentLanguage`. Default is `false`.
 
 contentDir
-: (`string`) The content directory for this language. Omit if [translating by file name].
+: (`string`) The `content` directory for this language. Omit if [translating by file name].
 
 disabled
 : (`bool`) If `true`, Hugo will not render content for this language. Default is `false`.
@@ -92,7 +98,7 @@ languageName
 : (`string`) The language name, typically used when rendering a language switcher.
 
 title
-: (`string`) The site title for this langauge (optional).
+: (`string`) The site title for this language (optional).
 
 weight
 : (`int`) The language weight. When set to a non-zero value, this is the primary sort criteria for this language.
@@ -103,34 +109,42 @@ weight
 [RFC 5646]: https://datatracker.ietf.org/doc/html/rfc5646#section-2.1
 [translating by file name]: #translation-by-file-name
 
-### Changes in Hugo 0.112.0
+### Site parameters
 
-{{< new-in 0.112.0 >}}
-
-In Hugo `v0.112.0` we consolidated all configuration options, and improved how the languages and their parameters are merged with the main configuration. But while testing this on Hugo sites out there, we received some error reports and reverted some of the changes in favor of deprecation warnings:
-
-1. `site.Language.Params` is deprecated. Use `site.Params` directly.
-1. Adding custom parameters to the top level language configuration is deprecated. Define custom parameters within `languages.xx.params`. See `color` in the example below.
+Set language-specific site parameters under each language's `params` key:
 
 {{< code-toggle file=hugo >}}
-
-title = "My blog"
-languageCode = "en-us"
+[params]
+color = "red"
 
 [languages]
-[languages.sv]
-title = "Min blogg"
-languageCode = "sv"
-[languages.en.params]
-color = "blue"
+  [languages.de]
+    languageCode = 'de-DE'
+    title = 'Projekt Dokumentation'
+    weight = 1
+    [languages.de.params]
+      color = 'blue'
+      subtitle = 'Referenz, Tutorials und Erklärungen'
+  [languages.en]
+    languageCode = 'en-US'
+    title = 'Project Documentation'
+    weight = 2
+    [languages.en.params]
+      subtitle = 'Reference, Tutorials, and Explanations'
 {{< /code-toggle >}}
 
-In the example above, all settings except `color` below `params` map to predefined configuration options in Hugo for the site and its language, and should be accessed via the documented accessors:
+When building the English site:
 
 ```go-html-template
-{{ site.Title }}
-{{ site.LanguageCode }}
-{{ site.Params.color }}
+{{ site.Params.color }} --> red
+{{ site.Params.subtitle }} --> Reference, Tutorials, and Explanations
+```
+
+When building the English site:
+
+```go-html-template
+{{ site.Params.color }} --> blue
+{{ site.Params.subtitle }} --> 'Referenz, Tutorials und Erklärungen'
 ```
 
 ### Disable a language
@@ -157,7 +171,6 @@ HUGO_DISABLELANGUAGES="es fr" hugo
 Note that you cannot disable the default content language.
 
 ### Configure multilingual multihost
-
 
 Hugo supports multiple languages in a multihost configuration. This means you can configure a `baseURL` per `language`.
 
@@ -210,7 +223,7 @@ There are two ways to manage your content translations. Both ensure each page is
 Considering the following example:
 
 1. `/content/about.en.md`
-2. `/content/about.fr.md`
+1. `/content/about.fr.md`
 
 The first file is assigned the English language and is linked to the second.
 The second file is assigned the French language and is linked to the first.
@@ -225,7 +238,7 @@ If a file has no language code, it will be assigned the default language.
 
 ### Translation by content directory
 
-This system uses different content directories for each of the languages. Each language's content directory is set using the `contentDir` parameter.
+This system uses different content directories for each of the languages. Each language's `content` directory is set using the `contentDir` parameter.
 
 {{< code-toggle file=hugo >}}
 languages:
@@ -244,14 +257,14 @@ The value of `contentDir` can be any valid path -- even absolute path references
 Considering the following example in conjunction with the configuration above:
 
 1. `/content/english/about.md`
-2. `/content/french/about.md`
+1. `/content/french/about.md`
 
 The first file is assigned the English language and is linked to the second.
 The second file is assigned the French language and is linked to the first.
 
-Their language is __assigned__ according to the content directory they are __placed__ in.
+Their language is __assigned__ according to the `content` directory they are __placed__ in.
 
-By having the same **path and basename** (relative to their language content directory), the content pieces are __linked__ together as translated pages.
+By having the same **path and basename** (relative to their language `content` directory), the content pieces are __linked__ together as translated pages.
 
 ### Bypassing default linking
 
@@ -260,8 +273,8 @@ Any pages sharing the same `translationKey` set in front matter will be linked a
 Considering the following example:
 
 1. `/content/about-us.en.md`
-2. `/content/om.nn.md`
-3. `/content/presentation/a-propos.fr.md`
+1. `/content/om.nn.md`
+1. `/content/presentation/a-propos.fr.md`
 
 {{< code-toggle >}}
 translationKey: "about"
@@ -322,7 +335,7 @@ To create a list of links to translated content, use a template similar to the f
 {{ end }}
 {{< /code >}}
 
-The above can be put in a `partial` (i.e., inside `layouts/partials/`) and included in any template, whether a [single content page][contenttemplate] or the [homepage]. It will not print anything if there are no translations for a given page.
+The above can be put in a `partial` (i.e., inside `layouts/partials/`) and included in any template. It will not print anything if there are no translations for a given page.
 
 The above also uses the [`i18n` function][i18func] described in the next section.
 
@@ -564,7 +577,7 @@ products = 'Produkte'
 services = 'Leistungen'
 {{< / code-toggle >}}
 
-[example menu template]: /templates/menu-templates/#example
+[example menu template]: /templates/menu/#example
 [automatically]: /content-management/menus/#define-automatically
 [in front matter]: /content-management/menus/#define-in-front-matter
 [in site configuration]: /content-management/menus/#define-in-site-configuration
@@ -615,10 +628,8 @@ hugo new content content/de/post/test.md
 
 [`abslangurl`]: /functions/urls/abslangurl/
 [config]: /getting-started/configuration/
-[contenttemplate]: /templates/single-page-templates/
 [go-i18n-source]: https://github.com/nicksnyder/go-i18n
 [go-i18n]: https://github.com/nicksnyder/go-i18n
-[homepage]: /templates/homepage/
 [Hugo Multilingual Part 1: Content translation]: https://regisphilibert.com/blog/2018/08/hugo-multilingual-part-1-managing-content-translation/
 [i18func]: /functions/lang/translate/
 [lang.FormatAccounting]: /functions/lang/formataccounting/
@@ -630,5 +641,4 @@ hugo new content content/de/post/test.md
 [menus]: /content-management/menus/
 [OS environment]: /getting-started/configuration/#configure-with-environment-variables
 [`rellangurl`]: /functions/urls/rellangurl/
-[single page templates]: /templates/single-page-templates/
 [`time.Format`]: /functions/time/format/

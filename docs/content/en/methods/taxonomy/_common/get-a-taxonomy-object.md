@@ -1,10 +1,10 @@
 ---
-# Do not remove front matter.
+_comment: Do not remove front matter.
 ---
 
 Before we can use a `Taxonomy` method, we need to capture a `Taxonomy` object.
 
-## Capture a taxonomy object
+## Capture a Taxonomy object
 
 Consider this site configuration:
 
@@ -26,13 +26,13 @@ content/
 └── _index.md
 ```
 
-To capture the "genres" taxonomy object from within any template, use the [`Taxonomies`] method on a `Site` object.
+To capture the "genres" `Taxonomy` object from within any template, use the [`Taxonomies`] method on a `Site` object.
 
 ```go-html-template
 {{ $taxonomyObject := .Site.Taxonomies.genres }}
 ```
 
-To capture the "genres" taxonomy object when rendering its page with a taxonomy template, use the [`Terms`] method on the page's [`Data`] object:
+To capture the "genres" `Taxonomy` object when rendering its page with a taxonomy template, use the [`Terms`] method on the page's [`Data`] object:
 
 {{< code file=layouts/_default/taxonomy.html  >}}
 {{ $taxonomyObject := .Data.Terms }}
@@ -58,7 +58,6 @@ Although the [`Alphabetical`] and [`ByCount`] methods provide a better data stru
 ```
 
 In the example above, the first anchor element is a link to the term page.
-
 
 [`Alphabetical`]: /methods/taxonomy/alphabetical/
 [`ByCount`]: /methods/taxonomy/bycount/

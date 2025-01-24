@@ -32,7 +32,6 @@ weight = 30
 
 With this template:
 
-
 ```go-html-template
 <ul>
   {{ range .Site.Menus.main }}
@@ -57,6 +56,6 @@ Hugo renders:
 
 See the [menu templates] section for more information.
 
-[menu templates]: /templates/menu-templates/#menu-entry-parameters
+[menu templates]: /templates/menu/#menu-entry-parameters
 [in front matter]: /content-management/menus/#define-in-front-matter
 [in site configuration]: /content-management/menus/

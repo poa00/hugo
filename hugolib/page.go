@@ -16,7 +16,9 @@ package hugolib
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -36,7 +38,6 @@ import (
 	"github.com/gohugoio/hugo/tpl"
 
 	"github.com/gohugoio/hugo/common/herrors"
-	"github.com/gohugoio/hugo/common/maps"
 	"github.com/gohugoio/hugo/common/types"
 
 	"github.com/gohugoio/hugo/source"
@@ -61,6 +62,7 @@ var (
 	pageTypesProvider = resource.NewResourceTypesProvider(media.Builtin.OctetType, pageResourceType)
 	nopPageOutput     = &pageOutput{
 		pagePerOutputProviders: nopPagePerOutput,
+		MarkupProvider:         page.NopPage,
 		ContentProvider:        page.NopPage,
 	}
 )
@@ -141,12 +143,16 @@ func (p *pageState) GetDependencyManagerForScope(scope int) identity.Manager {
 	}
 }
 
+func (p *pageState) GetDependencyManagerForScopesAll() []identity.Manager {
+	return []identity.Manager{p.dependencyManager, p.dependencyManagerOutput}
+}
+
 func (p *pageState) Key() string {
 	return "page-" + strconv.FormatUint(p.pid, 10)
 }
 
 func (p *pageState) resetBuildState() {
-	p.Scratcher = maps.NewScratcher()
+	// Nothing to do for now.
 }
 
 func (p *pageState) reusePageOutputContent() bool {
@@ -179,10 +185,6 @@ func (p *pageState) isContentNodeBranch() bool {
 	return p.IsNode()
 }
 
-func (p *pageState) Err() resource.ResourceError {
-	return nil
-}
-
 // Eq returns whether the current page equals the given page.
 // This is what's invoked when doing `{{ if eq $page $otherPage }}`
 func (p *pageState) Eq(other any) bool {
@@ -213,11 +215,8 @@ func (p *pageHeadingsFiltered) page() page.Page {
 
 // For internal use by the related content feature.
 func (p *pageState) ApplyFilterToHeadings(ctx context.Context, fn func(*tableofcontents.Heading) bool) related.Document {
-	r, err := p.m.content.contentToC(ctx, p.pageOutput.pco)
-	if err != nil {
-		panic(err)
-	}
-	headings := r.tableOfContents.Headings.FilterBy(fn)
+	fragments := p.pageOutput.pco.c().Fragments(ctx)
+	headings := fragments.Headings.FilterBy(fn)
 	return &pageHeadingsFiltered{
 		pageState: p,
 		headings:  headings,
@@ -360,7 +359,22 @@ func (p *pageState) Site() page.Site {
 }
 
 func (p *pageState) String() string {
-	return fmt.Sprintf("Page(%s)", p.Path())
+	var sb strings.Builder
+	if p.File() != nil {
+		// The forward slashes even on Windows is motivated by
+		// getting stable tests.
+		// This information is meant for getting positional information in logs,
+		// so the direction of the slashes should not matter.
+		sb.WriteString(filepath.ToSlash(p.File().Filename()))
+		if p.File().IsContentAdapter() {
+			// Also include the path.
+			sb.WriteString(":")
+			sb.WriteString(p.Path())
+		}
+	} else {
+		sb.WriteString(p.Path())
+	}
+	return sb.String()
 }
 
 // IsTranslated returns whether this content file is translated to
@@ -719,6 +733,7 @@ func (p *pageState) shiftToOutputFormat(isRenderingSite bool, idx int) error {
 			})
 			p.pageOutput.contentRenderer = lcp
 			p.pageOutput.ContentProvider = lcp
+			p.pageOutput.MarkupProvider = lcp
 			p.pageOutput.PageRenderProvider = lcp
 			p.pageOutput.TableOfContentsProvider = lcp
 		}

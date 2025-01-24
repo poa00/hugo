@@ -10,21 +10,21 @@ menu:
 weight: 20
 toc: true
 aliases: [/quickstart/,/overview/quickstart/]
-minVersion: v0.112.0
+minVersion: v0.128.0
 ---
 
 In this tutorial you will:
 
 1. Create a site
-2. Add content
-3. Configure the site
-4. Publish the site
+1. Add content
+1. Configure the site
+1. Publish the site
 
 ## Prerequisites
 
 Before you begin this tutorial you must:
 
-1. [Install Hugo] (extended edition, {{% param "minVersion" %}} or later)
+1. [Install Hugo] (extended or extended/deploy edition, {{% param "minVersion" %}} or later)
 1. [Install Git]
 
 You must also be comfortable working from the command line.
@@ -174,10 +174,8 @@ theme = 'ananke'
 Make the following changes:
 
 1. Set the `baseURL` for your production site. This value must begin with the protocol and end with a slash, as shown above.
-
-2. Set the `languageCode` to your language and region.
-
-3. Set the `title` for your production site.
+1. Set the `languageCode` to your language and region.
+1. Set the `title` for your production site.
 
 Start Hugo's development server to see your changes, remembering to include draft content.
 

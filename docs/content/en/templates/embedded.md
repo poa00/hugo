@@ -2,12 +2,12 @@
 title: Embedded templates
 description: Hugo provides embedded templates for common use cases.
 categories: [templates]
-keywords: [internal, analytics,]
+keywords: []
 menu:
   docs:
     parent: templates
-    weight: 190
-weight: 190
+    weight: 200
+weight: 200
 toc: true
 aliases: [/templates/internal]
 ---
@@ -15,7 +15,7 @@ aliases: [/templates/internal]
 ## Disqus
 
 {{% note %}}
-To override Hugo's embedded Disqus template, copy the [source code] to a file with the same name in the layouts/partials directory, then call it from your templates using the [`partial`] function:
+To override Hugo's embedded Disqus template, copy the [source code] to a file with the same name in the `layouts/partials` directory, then call it from your templates using the [`partial`] function:
 
 `{{ partial "disqus.html" . }}`
 
@@ -58,7 +58,7 @@ You can also set the following in the front matter for a given piece of content:
 ## Google Analytics
 
 {{% note %}}
-To override Hugo's embedded Google Analytics template, copy the [source code] to a file with the same name in the layouts/partials directory, then call it from your templates using the [`partial`] function:
+To override Hugo's embedded Google Analytics template, copy the [source code] to a file with the same name in the `layouts/partials` directory, then call it from your templates using the [`partial`] function:
 
 `{{ partial "google_analytics.html" . }}`
 
@@ -82,7 +82,7 @@ Provide your tracking ID in your configuration file:
 
 {{< code-toggle file=hugo >}}
 [services.googleAnalytics]
-ID = "G-MEASUREMENT_ID"
+id = "G-MEASUREMENT_ID"
 {{</ code-toggle >}}
 
 To use this value in your own template, access the configured ID with `{{ site.Config.Services.GoogleAnalytics.ID }}`.
@@ -90,7 +90,7 @@ To use this value in your own template, access the configured ID with `{{ site.C
 ## Open Graph
 
 {{% note %}}
-To override Hugo's embedded Open Graph template, copy the [source code] to a file with the same name in the layouts/partials directory, then call it from your templates using the [`partial`] function:
+To override Hugo's embedded Open Graph template, copy the [source code] to a file with the same name in the `layouts/partials` directory, then call it from your templates using the [`partial`] function:
 
 `{{ partial "opengraph.html" . }}`
 
@@ -135,7 +135,7 @@ tags = []
 
 Hugo uses the page title and description for the title and description metadata.
 The first 6 URLs from the `images` array are used for image metadata.
-If [page bundles](/content-management/page-bundles/) are used and the `images` array is empty or undefined, images with file names matching `*feature*` or `*cover*,*thumbnail*` are used for image metadata.
+If [page bundles](/content-management/page-bundles/) are used and the `images` array is empty or undefined, images with file names matching `*feature*`, `*cover*`, or `*thumbnail*` are used for image metadata.
 
 Various optional metadata can also be set:
 
@@ -149,7 +149,7 @@ If using YouTube this will produce a og:video tag like `<meta property="og:video
 ## Schema
 
 {{% note %}}
-To override Hugo's embedded Schema template, copy the [source code] to a file with the same name in the layouts/partials directory, then call it from your templates using the [`partial`] function:
+To override Hugo's embedded Schema template, copy the [source code] to a file with the same name in the `layouts/partials` directory, then call it from your templates using the [`partial`] function:
 
 `{{ partial "schema.html" . }}`
 
@@ -170,7 +170,7 @@ To include the embedded template:
 ## X (Twitter) Cards
 
 {{% note %}}
-To override Hugo's embedded Twitter Cards template, copy the [source code] to a file with the same name in the layouts/partials directory, then call it from your templates using the [`partial`] function:
+To override Hugo's embedded Twitter Cards template, copy the [source code] to a file with the same name in the `layouts/partials` directory, then call it from your templates using the [`partial`] function:
 
 `{{ partial "twitter_cards.html" . }}`
 
@@ -203,7 +203,7 @@ description = "Text about this post"
 images = ["post-cover.png"]
 {{</ code-toggle >}}
 
-If `images` aren't specified in the page front-matter, then hugo searches for [image page resources](/content-management/image-processing/) with `feature`, `cover`, or `thumbnail` in their name.
+If [page bundles](/content-management/page-bundles/) are used and the `images` array is empty or undefined, images with file names matching `*feature*`, `*cover*`, or `*thumbnail*` are used for image metadata.
 If no image resources with those names are found, the images defined in the [site config](/getting-started/configuration/) are used instead.
 If no images are found at all, then an image-less Twitter `summary` card is used instead of `summary_large_image`.
 

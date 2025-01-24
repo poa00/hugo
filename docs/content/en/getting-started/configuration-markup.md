@@ -6,8 +6,8 @@ keywords: [markup,markdown,goldmark,asciidoc,asciidoctor,highlighting]
 menu:
   docs:
     parent: getting-started
-    weight: 50
-weight: 50
+    weight: 60
+weight: 60
 slug: configuration-markup
 toc: true
 ---
@@ -21,7 +21,7 @@ Hugo uses [Goldmark] to render Markdown to HTML.
 defaultMarkdownHandler = 'goldmark'
 {{< /code-toggle >}}
 
-Files with the `.md` or `.markdown` extension are processed as Markdown, provided that you have not specified a different [content format] using the `markup` field in front matter.
+Files with a `.md`, `.mdown`, or `.markdown` extension are processed as Markdown, provided that you have not specified a different [content format] using the `markup` field in front matter.
 
 To use a different renderer for Markdown files, specify one of `asciidocext`, `org`, `pandoc`, or `rst` in your site configuration.
 
@@ -36,7 +36,7 @@ defaultMarkdownHandler|Description
 To use AsciiDoc, Pandoc, or reStructuredText you must install the relevant renderer and update your [security policy].
 
 {{% note %}}
-Unless you need a unique capability provided by one of the alternate Markdown handlers, we strongly recommend that you use the default setting. Goldmark is fast, well maintained, conforms to the [CommonMark] specification, and is compatible with [GitHub Flavored Markdown] (GFM).
+Unless you need a unique capability provided by one of the alternative Markdown handlers, we strongly recommend that you use the default setting. Goldmark is fast, well maintained, conforms to the [CommonMark] specification, and is compatible with [GitHub Flavored Markdown] (GFM).
 
 [commonmark]: https://spec.commonmark.org/0.30/
 [github flavored markdown]: https://github.github.com/gfm/
@@ -84,33 +84,53 @@ typographer|[Goldmark Extensions: Typographer]|:heavy_check_mark:
 [PHP Markdown Extra: Definition lists]: https://michelf.ca/projects/php-markdown/extra/#def-list
 [PHP Markdown Extra: Footnotes]: https://michelf.ca/projects/php-markdown/extra/#footnotes
 
-#### Extras extension
+#### Extras
 
 {{< new-in 0.126.0 >}}
 
-Configure the extras extension to enable [inserted text], [mark text], [subscript], and [superscript] elements in Markdown.
+Enable [deleted text], [inserted text], [mark text], [subscript], and [superscript] elements in Markdown.
 
 Element|Markdown|Rendered
 :--|:--|:--
-Inserted text|`++foo++`|`<ins>foo</ins>`
-Mark text|`==bar==`|`<mark>bar</mark>`
+Deleted text|`~~foo~~`|`<del>foo</del>`
+Inserted text|`++bar++`|`<ins>bar</ins>`
+Mark text|`==baz==`|`<mark>baz</mark>`
 Subscript|`H~2~O`|`H<sub>2</sub>O`
 Superscript|`1^st^`|`1<sup>st</sup>`
 
+[deleted text]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/del
 [inserted text]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ins
 [mark text]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/mark
 [subscript]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/sub
 [superscript]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/sup
 
-#### Passthrough extension
+To avoid a conflict when enabling the Hugo Goldmark Extras subscript extension, if you want to render subscript and strikethrough text concurrently you must:
+
+1. Disable the Goldmark strikethrough extension
+1. Enable the Hugo Goldmark Extras delete extension
+
+For example:
+
+{{< code-toggle file=hugo >}}
+[markup.goldmark.extensions]
+strikethrough = false
+
+[markup.goldmark.extensions.extras.delete]
+enable = true
+
+[markup.goldmark.extensions.extras.subscript]
+enable = true
+{{< /code-toggle >}}
+
+#### Passthrough
 
 {{< new-in 0.122.0 >}}
 
-Enable the passthrough extension to include mathematical equations and expressions in Markdown using LaTeX or TeX typesetting syntax. See [mathematics in Markdown] for details.
+Enable the passthrough extension to include mathematical equations and expressions in Markdown using LaTeX markup. See [mathematics in Markdown] for details.
 
 [mathematics in Markdown]: content-management/mathematics/
 
-#### Typographer extension
+#### Typographer
 
 The Typographer extension replaces certain character combinations with HTML entities as specified below:
 
@@ -218,7 +238,7 @@ This is the default configuration for the AsciiDoc renderer:
 
 ###### attributes
 
-(`map`) A map of key-value pairs, each a document attributes,See Asciidoctor’s [attributes].
+(`map`) A map of key-value pairs, each a document attribute. See Asciidoctor’s [attributes].
 
 [attributes]: https://asciidoctor.org/docs/asciidoc-syntax-quick-reference/#attributes-and-substitutions
 
@@ -281,6 +301,51 @@ To mitigate security risks, entries in the extension array may not contain forwa
         my-base-url = "https://example.com/"
         my-attribute-name = "my value"
 {{< /code-toggle >}}
+
+### AsciiDoc syntax highlighting
+
+Follow the steps below to enable syntax highlighting.
+
+Step 1
+: Set the `source-highlighter` attribute in your site configuration. For example:
+
+{{< code-toggle file=hugo >}}
+[markup.asciidocExt.attributes]
+source-highlighter = 'rouge'
+{{< /code-toggle >}}
+
+Step 2
+: Generate the highlighter CSS. For example:
+
+```text
+rougify style monokai.sublime > assets/css/syntax.css
+```
+
+Step 3
+: In your base template add a link to the CSS file:
+
+{{< code file=layouts/_default/baseof.html >}}
+<head>
+  ...
+  {{ with resources.Get "css/syntax.css" }}
+    <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
+  {{ end }}
+  ...
+</head>
+{{< /code >}}
+
+Then add the code to be highlighted to your markup:
+
+```text
+[#hello,ruby]
+----
+require 'sinatra'
+
+get '/hi' do
+  "Hello World!"
+end
+----
+```
 
 ### AsciiDoc troubleshooting
 

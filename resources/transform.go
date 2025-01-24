@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/gohugoio/hugo/common/constants"
+	"github.com/gohugoio/hugo/common/hashing"
 	"github.com/gohugoio/hugo/common/paths"
 	"github.com/gohugoio/hugo/identity"
 
@@ -36,7 +37,6 @@ import (
 	"github.com/gohugoio/hugo/common/herrors"
 	"github.com/gohugoio/hugo/common/hugio"
 	"github.com/gohugoio/hugo/common/maps"
-	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/resources/internal"
 	"github.com/gohugoio/hugo/resources/resource"
 
@@ -51,6 +51,10 @@ var (
 	_ resource.Staler                    = (*resourceAdapterInner)(nil)
 	_ identity.IdentityGroupProvider     = (*resourceAdapterInner)(nil)
 	_ resource.Source                    = (*resourceAdapter)(nil)
+	_ resource.Identifier                = (*resourceAdapter)(nil)
+	_ resource.TransientIdentifier       = (*resourceAdapter)(nil)
+	_ targetPathProvider                 = (*resourceAdapter)(nil)
+	_ sourcePathProvider                 = (*resourceAdapter)(nil)
 	_ resource.Identifier                = (*resourceAdapter)(nil)
 	_ resource.ResourceNameTitleProvider = (*resourceAdapter)(nil)
 	_ resource.WithResourceMetaProvider  = (*resourceAdapter)(nil)
@@ -188,10 +192,6 @@ func (r *resourceAdapter) Content(ctx context.Context) (any, error) {
 	return r.target.Content(ctx)
 }
 
-func (r *resourceAdapter) Err() resource.ResourceError {
-	return nil
-}
-
 func (r *resourceAdapter) GetIdentity() identity.Identity {
 	return identity.FirstIdentity(r.target)
 }
@@ -275,6 +275,23 @@ func (r *resourceAdapter) Colors() ([]images.Color, error) {
 func (r *resourceAdapter) Key() string {
 	r.init(false, false)
 	return r.target.(resource.Identifier).Key()
+}
+
+func (r *resourceAdapter) TransientKey() string {
+	return r.Key()
+}
+
+func (r *resourceAdapter) targetPath() string {
+	r.init(false, false)
+	return r.target.(targetPathProvider).targetPath()
+}
+
+func (r *resourceAdapter) sourcePath() string {
+	r.init(false, false)
+	if sp, ok := r.target.(sourcePathProvider); ok {
+		return sp.sourcePath()
+	}
+	return ""
 }
 
 func (r *resourceAdapter) MediaType() media.Type {
@@ -397,7 +414,7 @@ func (r *resourceAdapter) TransformationKey() string {
 	for _, tr := range r.transformations {
 		key = key + "_" + tr.Key().Value()
 	}
-	return r.spec.ResourceCache.cleanKey(r.target.Key()) + "_" + helpers.MD5String(key)
+	return r.spec.ResourceCache.cleanKey(r.target.Key()) + "_" + hashing.MD5FromStringHexEncoded(key)
 }
 
 func (r *resourceAdapter) getOrTransform(publish, setContent bool) error {

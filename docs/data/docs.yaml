@@ -55,6 +55,9 @@ chroma:
     - armasm
     Name: ArmAsm
   - Aliases:
+    - atl
+    Name: ATL
+  - Aliases:
     - autohotkey
     - ahk
     Name: AutoHotkey
@@ -88,6 +91,9 @@ chroma:
     - dosbatch
     - winbatch
     Name: Batchfile
+  - Aliases:
+    - beef
+    Name: Beef
   - Aliases:
     - bib
     - bibtex
@@ -190,6 +196,9 @@ chroma:
   - Aliases:
     - css
     Name: CSS
+  - Aliases:
+    - csv
+    Name: CSV
   - Aliases:
     - cue
     Name: CUE
@@ -308,6 +317,9 @@ chroma:
     - Gherkin
     Name: Gherkin
   - Aliases:
+    - gleam
+    Name: Gleam
+  - Aliases:
     - glsl
     Name: GLSL
   - Aliases:
@@ -412,6 +424,12 @@ chroma:
     - json
     Name: JSON
   - Aliases:
+    - jsonata
+    Name: JSONata
+  - Aliases:
+    - jsonnet
+    Name: Jsonnet
+  - Aliases:
     - julia
     - jl
     Name: Julia
@@ -461,7 +479,8 @@ chroma:
     Name: Matlab
   - Aliases:
     - mcfunction
-    Name: mcfunction
+    - mcf
+    Name: MCFunction
   - Aliases:
     - meson
     - meson.build
@@ -518,6 +537,11 @@ chroma:
     - nixos
     - nix
     Name: Nix
+  - Aliases:
+    - nsis
+    - nsi
+    - nsh
+    Name: NSIS
   - Aliases:
     - objective-c
     - objectivec
@@ -750,6 +774,9 @@ chroma:
     - smarty
     Name: Smarty
   - Aliases:
+    - snbt
+    Name: SNBT
+  - Aliases:
     - snobol
     Name: Snobol
   - Aliases:
@@ -859,6 +886,9 @@ chroma:
   - Aliases:
     - typoscripthtmldata
     Name: TypoScriptHtmlData
+  - Aliases:
+    - typst
+    Name: Typst
   - Aliases: null
     Name: ucode
   - Aliases:
@@ -901,6 +931,9 @@ chroma:
   - Aliases:
     - wgsl
     Name: WebGPU Shading Language
+  - Aliases:
+    - vtt
+    Name: WebVTT
   - Aliases:
     - whiley
     Name: Whiley
@@ -975,6 +1008,9 @@ config:
     images:
       dir: :resourceDir/_gen
       maxAge: -1
+    misc:
+      dir: :cacheDir/:project
+      maxAge: -1
     modules:
       dir: :cacheDir/modules
       maxAge: -1
@@ -987,6 +1023,7 @@ config:
   dataDir: data
   defaultContentLanguage: en
   defaultContentLanguageInSubdir: false
+  defaultOutputFormat: html
   deployment:
     confirm: false
     dryRun: false
@@ -999,6 +1036,7 @@ config:
     targets: null
     workers: 10
   disableAliases: false
+  disableDefaultLanguageRedirect: false
   disableHugoGeneratorInject: false
   disableKinds: null
   disableLanguages: null
@@ -1079,6 +1117,8 @@ config:
           escapedSpace: false
         definitionList: true
         extras:
+          delete:
+            enable: false
           insert:
             enable: false
           mark:
@@ -1137,9 +1177,9 @@ config:
       lineNos: false
       lineNumbersInTable: true
       noClasses: true
-      noHl: false
       style: monokai
       tabWidth: 4
+      wrapperClass: highlight
     tableOfContents:
       endLevel: 3
       ordered: false
@@ -1331,6 +1371,7 @@ config:
     minifyOutput: false
     tdewolff:
       css:
+        inline: false
         keepCSS2: true
         precision: 0
       html:
@@ -1353,6 +1394,7 @@ config:
         keepNumbers: false
         precision: 0
       svg:
+        inline: false
         keepComments: false
         precision: 0
       xml:
@@ -1364,37 +1406,44 @@ config:
       min: ""
     imports: null
     mounts:
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: content
       target: content
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: data
       target: data
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: layouts
       target: layouts
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: i18n
       target: i18n
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: archetypes
       target: archetypes
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: assets
       target: assets
-    - excludeFiles: null
+    - disableWatch: false
+      excludeFiles: null
       includeFiles: null
       lang: ""
       source: static
@@ -1583,8 +1632,15 @@ config:
     term:
     - html
     - rss
-  paginate: 10
-  paginatePath: page
+  page:
+    nextPrevInSectionSortOrder: desc
+    nextPrevSortOrder: desc
+  paginate: 0
+  paginatePath: ""
+  pagination:
+    disableAliases: false
+    pagerSize: 10
+    path: page
   panicOnWarning: false
   params: {}
   permalinks:
@@ -1610,6 +1666,10 @@ config:
       enableDNT: false
       simple: false
     vimeo:
+      disable: false
+      enableDNT: false
+      simple: false
+    x:
       disable: false
       enableDNT: false
       simple: false
@@ -1656,8 +1716,10 @@ config:
       allow:
       - ^(dart-)?sass(-embedded)?$
       - ^go$
+      - ^git$
       - ^npx$
       - ^postcss$
+      - ^tailwindcss$
       osEnv:
       - (?i)^((HTTPS?|NO)_PROXY|PATH(EXT)?|APPDATA|TE?MP|TERM|GO\w+|(XDG_CONFIG_)?HOME|USERPROFILE|SSH_AUTH_SOCK|DISPLAY|LANG|SYSTEMDRIVE)$
     funcs:
@@ -1689,6 +1751,8 @@ config:
     rss:
       limit: -1
     twitter:
+      disableInlineCSS: false
+    x:
       disableInlineCSS: false
   sitemap:
     changeFreq: ""
@@ -1760,6 +1824,10 @@ config_helpers:
     outputformats:
       _merge: shallow
     outputs:
+      _merge: none
+    page:
+      _merge: none
+    pagination:
       _merge: none
     params:
       _merge: deep
@@ -1835,7 +1903,7 @@ output:
     - layouts/_default/demolayout-baseof.html
     - layouts/_default/single-baseof.html
     - layouts/_default/baseof.html
-  - Example: AMP single page
+  - Example: AMP single page in "posts" section
     Kind: page
     OutputFormat: amp
     Suffix: html
@@ -1844,17 +1912,17 @@ output:
     - layouts/posts/single.html
     - layouts/_default/single.amp.html
     - layouts/_default/single.html
-  - Example: AMP single page, French language
+  - Example: AMP single page in "posts" section, French language
     Kind: page
-    OutputFormat: html
+    OutputFormat: amp
     Suffix: html
     Template Lookup Order:
-    - layouts/posts/single.fr.html.html
-    - layouts/posts/single.html.html
+    - layouts/posts/single.fr.amp.html
+    - layouts/posts/single.amp.html
     - layouts/posts/single.fr.html
     - layouts/posts/single.html
-    - layouts/_default/single.fr.html.html
-    - layouts/_default/single.html.html
+    - layouts/_default/single.fr.amp.html
+    - layouts/_default/single.amp.html
     - layouts/_default/single.fr.html
     - layouts/_default/single.html
   - Example: Home page
@@ -2410,19 +2478,6 @@ tpl:
           treating values as key-value pairs.  The number of values must be even.
           The keys can be string slices, which will create the needed nested structure.
         Examples: []
-      EchoParam:
-        Aliases:
-        - echoParam
-        Args:
-        - c
-        - k
-        Description: |-
-          EchoParam returns the value in the collection c with key k if is set; otherwise, it returns an
-          empty string.
-          Deprecated: Use the index function instead.
-        Examples:
-        - - '{{ echoParam .Params "langCode" }}'
-          - en
       First:
         Aliases:
         - first
@@ -2543,8 +2598,9 @@ tpl:
         - querify
         Args:
         - params
-        Description: Querify encodes the given params in URL-encoded form ("bar=baz&foo=quux")
-          sorted by key.
+        Description: |-
+          Querify returns a URL query string composed of the given key-value pairs,
+          encoded and sorted by key.
         Examples:
         - - '{{ (querify "foo" 1 "bar" 2 "baz" "with spaces" "qux" "this&that=those")
             | safeHTML }}'
@@ -2738,14 +2794,9 @@ tpl:
     crypto:
       FNV32a:
         Aliases: null
-        Args:
-        - v
-        Description: |-
-          FNV32a hashes v using fnv32a algorithm.
-          <docsmeta>{"newIn": "0.98.0" }</docsmeta>
-        Examples:
-        - - '{{ crypto.FNV32a "Hugo Rocks!!" }}'
-          - "1515779328"
+        Args: null
+        Description: ""
+        Examples: null
       HMAC:
         Aliases:
         - hmac
@@ -2788,7 +2839,26 @@ tpl:
         - - '{{ sha256 "Hello world, gophers!" }}'
           - 6ec43b78da9669f50e4e422575c54bf87536954ccd58280219c393f2ce352b46
     css:
+      PostCSS:
+        Aliases:
+        - postCSS
+        Args:
+        - args
+        Description: PostCSS processes the given Resource with PostCSS.
+        Examples: []
       Quoted:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
+      Sass:
+        Aliases:
+        - toCSS
+        Args:
+        - args
+        Description: Sass processes the given Resource with SASS.
+        Examples: []
+      TailwindCSS:
         Aliases: null
         Args: null
         Description: ""
@@ -3013,6 +3083,24 @@ tpl:
         Args: null
         Description: ""
         Examples: null
+    hash:
+      FNV32a:
+        Aliases: null
+        Args:
+        - v
+        Description: FNV32a hashes v using fnv32a algorithm.
+        Examples:
+        - - '{{ hash.FNV32a "Hugo Rocks!!" }}'
+          - "1515779328"
+      XxHash:
+        Aliases:
+        - xxhash
+        Args:
+        - v
+        Description: XxHash returns the xxHash of the input string.
+        Examples:
+        - - '{{ hash.XxHash "The quick brown fox jumps over the lazy dog" }}'
+          - 0b242d361fda71bc
     hugo:
       Deps:
         Aliases: null
@@ -3055,6 +3143,11 @@ tpl:
         Description: ""
         Examples: null
       IsServer:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
+      Store:
         Aliases: null
         Args: null
         Description: ""
@@ -3139,6 +3232,11 @@ tpl:
         Args: null
         Description: ""
         Examples: null
+      Mask:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       Opacity:
         Aliases: null
         Args: null
@@ -3160,6 +3258,11 @@ tpl:
         Description: ""
         Examples: null
       Process:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
+      QR:
         Aliases: null
         Args: null
         Description: ""
@@ -3228,6 +3331,18 @@ tpl:
         - - '{{ "cats" | singularize }}'
           - cat
     js:
+      Babel:
+        Aliases:
+        - babel
+        Args:
+        - args
+        Description: Babel processes the given Resource with Babel.
+        Examples: []
+      Batch:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       Build:
         Aliases: null
         Args: null
@@ -3317,11 +3432,6 @@ tpl:
         Args: null
         Description: ""
         Examples: null
-      NumFmt:
-        Aliases: null
-        Args: null
-        Description: ""
-        Examples: null
       Translate:
         Aliases:
         - i18n
@@ -3341,6 +3451,14 @@ tpl:
         Examples:
         - - '{{ math.Abs -2.1 }}'
           - "2.1"
+      Acos:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Acos returns the arccosine, in radians, of n.
+        Examples:
+        - - '{{ math.Acos 1 }}'
+          - "0"
       Add:
         Aliases:
         - add
@@ -3350,6 +3468,32 @@ tpl:
         Examples:
         - - '{{ add 1 2 }}'
           - "3"
+      Asin:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Asin returns the arcsine, in radians, of n.
+        Examples:
+        - - '{{ math.Asin 1 }}'
+          - "1.5707963267948966"
+      Atan:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Atan returns the arctangent, in radians, of n.
+        Examples:
+        - - '{{ math.Atan 1 }}'
+          - "0.7853981633974483"
+      Atan2:
+        Aliases: null
+        Args:
+        - "n"
+        - m
+        Description: Atan2 returns the arc tangent of n/m, using the signs of the
+          two to determine the quadrant of the return value.
+        Examples:
+        - - '{{ math.Atan2 1 2 }}'
+          - "0.4636476090008061"
       Ceil:
         Aliases: null
         Args:
@@ -3359,6 +3503,14 @@ tpl:
         Examples:
         - - '{{ math.Ceil 2.1 }}'
           - "3"
+      Cos:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Cos returns the cosine of the radian argument n.
+        Examples:
+        - - '{{ math.Cos 1 }}'
+          - "0.5403023058681398"
       Counter:
         Aliases: null
         Args: null
@@ -3438,6 +3590,13 @@ tpl:
         Examples:
         - - '{{ mul 2 3 }}'
           - "6"
+      Pi:
+        Aliases: null
+        Args: null
+        Description: Pi returns the mathematical constant pi.
+        Examples:
+        - - '{{ math.Pi }}'
+          - "3.141592653589793"
       Pow:
         Aliases:
         - pow
@@ -3470,6 +3629,14 @@ tpl:
         Examples:
         - - '{{ math.Round 1.5 }}'
           - "2"
+      Sin:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Sin returns the sine of the radian argument n.
+        Examples:
+        - - '{{ math.Sin 1 }}'
+          - "0.8414709848078965"
       Sqrt:
         Aliases: null
         Args:
@@ -3492,6 +3659,30 @@ tpl:
         Args: null
         Description: ""
         Examples: null
+      Tan:
+        Aliases: null
+        Args:
+        - "n"
+        Description: Tan returns the tangent of the radian argument n.
+        Examples:
+        - - '{{ math.Tan 1 }}'
+          - "1.557407724654902"
+      ToDegrees:
+        Aliases: null
+        Args:
+        - "n"
+        Description: ToDegrees converts radians into degrees.
+        Examples:
+        - - '{{ math.ToDegrees 1.5707963267948966 }}'
+          - "90"
+      ToRadians:
+        Aliases: null
+        Args:
+        - "n"
+        Description: ToRadians converts degrees into radians.
+        Examples:
+        - - '{{ math.ToRadians 90 }}'
+          - "1.5707963267948966"
     openapi3:
       Unmarshal:
         Aliases: null
@@ -3657,12 +3848,10 @@ tpl:
           - Slice
     resources:
       Babel:
-        Aliases:
-        - babel
-        Args:
-        - args
-        Description: Babel processes the given Resource with Babel.
-        Examples: []
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       ByType:
         Aliases: null
         Args: null
@@ -3738,27 +3927,20 @@ tpl:
           minifier.
         Examples: []
       PostCSS:
-        Aliases:
-        - postCSS
-        Args:
-        - args
-        Description: PostCSS processes the given Resource with PostCSS
-        Examples: []
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       PostProcess:
         Aliases: null
         Args: null
         Description: ""
         Examples: null
       ToCSS:
-        Aliases:
-        - toCSS
-        Args:
-        - args
-        Description: |-
-          ToCSS converts the given Resource to CSS. You can optional provide an Options object
-          as second argument. As an option, you can e.g. specify e.g. the target path (string)
-          for the converted CSS resource.
-        Examples: []
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
     safe:
       CSS:
         Aliases:
@@ -3838,6 +4020,11 @@ tpl:
         Args: null
         Description: ""
         Examples: null
+      CheckReady:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       Config:
         Aliases: null
         Args: null
@@ -3858,22 +4045,12 @@ tpl:
         Args: null
         Description: ""
         Examples: null
-      DisqusShortname:
-        Aliases: null
-        Args: null
-        Description: ""
-        Examples: null
       ForEeachIdentityByName:
         Aliases: null
         Args: null
         Description: ""
         Examples: null
       GetPage:
-        Aliases: null
-        Args: null
-        Description: ""
-        Examples: null
-      GoogleAnalytics:
         Aliases: null
         Args: null
         Description: ""
@@ -3889,11 +4066,6 @@ tpl:
         Description: ""
         Examples: null
       IsMultiLingual:
-        Aliases: null
-        Args: null
-        Description: ""
-        Examples: null
-      IsServer:
         Aliases: null
         Args: null
         Description: ""
@@ -3958,11 +4130,6 @@ tpl:
         Args: null
         Description: ""
         Examples: null
-      RSSLink:
-        Aliases: null
-        Args: null
-        Description: ""
-        Examples: null
       RegularPages:
         Aliases: null
         Args: null
@@ -3984,6 +4151,11 @@ tpl:
         Description: ""
         Examples: null
       Social:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
+      Store:
         Aliases: null
         Args: null
         Description: ""
@@ -4313,6 +4485,11 @@ tpl:
         Examples:
         - - '{{ "aabbaa" | strings.TrimRight "a" }}'
           - aabb
+      TrimSpace:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       TrimSuffix:
         Aliases: null
         Args:
@@ -4339,6 +4516,23 @@ tpl:
         - - '{{ "With [Markdown](/markdown) inside." | markdownify | truncate 14 }}'
           - With <a href="/markdown">Markdown …</a>
     templates:
+      Defer:
+        Aliases: null
+        Args:
+        - args
+        Description: Defer defers the execution of a template block.
+        Examples: []
+      DoDefer:
+        Aliases:
+        - doDefer
+        Args:
+        - ctx
+        - id
+        - optsv
+        Description: |-
+          DoDefer defers the execution of a template block.
+          For internal use only.
+        Examples: []
       Exists:
         Aliases: null
         Args:
@@ -4518,6 +4712,11 @@ tpl:
             {
                "title": "Hello World"
             }
+      ToMath:
+        Aliases: null
+        Args: null
+        Description: ""
+        Examples: null
       Unmarshal:
         Aliases:
         - unmarshal

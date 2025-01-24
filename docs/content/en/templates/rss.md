@@ -2,12 +2,12 @@
 title: RSS templates
 description: Use the embedded RSS template, or create your own.
 categories: [templates]
-keywords: [rss,xml,templates]
+keywords: []
 menu:
   docs:
     parent: templates
-    weight: 160
-weight: 160
+    weight: 150
+weight: 150
 toc: true
 ---
 
@@ -23,9 +23,7 @@ taxonomy = ['html']
 term = ['html']
 {{< /code-toggle >}}
 
-To disable feed generation for all [page kinds]:
-
-[page kinds]: /getting-started/glossary/#page-kind
+To disable feed generation for all [page kinds](g):
 
 {{< code-toggle file=hugo >}}
 disableKinds = ['rss']
@@ -70,7 +68,7 @@ Hugo will render this to:
 Override Hugo's [embedded RSS template] by creating one or more of your own, following the naming conventions as shown in the [template lookup order].
 
 [embedded RSS template]: {{% eturl rss %}}
-[template lookup order]: #template-lookup-order
+[template lookup order]: /templates/lookup-order/#rss-templates
 
 For example, to use different templates for home, section, taxonomy, and term pages:
 
@@ -84,9 +82,3 @@ layouts/
 ```
 
 RSS templates receive the `.Page` and `.Site` objects in context.
-
-## Template lookup order
-
-The table below shows the RSS template lookup order for the different page kinds. The first listing shows the lookup order when running with a theme (`demoTheme`).
-
-{{< datatable-filtered "output" "layouts" "OutputFormat == rss" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}

@@ -202,35 +202,6 @@ foo: bc
 	b.AssertFileContent("public/index.html", "<ul><li>P1</li><li>P2</li></ul>")
 }
 
-// Issue #11498
-func TestEchoParams(t *testing.T) {
-	t.Parallel()
-	files := `
--- hugo.toml --
-[params.footer]
-string = 'foo'
-int = 42
-float = 3.1415
-boolt = true
-boolf = false
--- layouts/index.html --
-{{ echoParam .Site.Params.footer "string" }}
-{{ echoParam .Site.Params.footer "int" }}
-{{ echoParam .Site.Params.footer "float" }}
-{{ echoParam .Site.Params.footer "boolt" }}
-{{ echoParam .Site.Params.footer "boolf" }}
-	`
-
-	b := hugolib.Test(t, files)
-	b.AssertFileContent("public/index.html",
-		"foo",
-		"42",
-		"3.1415",
-		"true",
-		"false",
-	)
-}
-
 func TestTermEntriesCollectionsIssue12254(t *testing.T) {
 	t.Parallel()
 
@@ -277,4 +248,33 @@ tags: ['tag-b']
 		"1: List2: 2|\n1: Intersect: 2|\n1: Union: 3|\n1: SymDiff: 1|\n1: Uniq: 3|\n\n\n2: List1: 3|\n2: List2: 1|",
 		"2: Intersect: 1|\n2: Union: 3|\n2: SymDiff: 2|\n2: Uniq: 3|",
 	)
+}
+
+// Issue #13181
+func TestUnionResourcesMatch(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- config.toml --
+disableKinds = ['rss','sitemap', 'taxonomy', 'term', 'page']
+-- layouts/index.html --
+{{ $a := resources.Match "*a*" }}
+{{ $b := resources.Match "*b*" }}
+{{ $union := $a | union $b }}
+{{ range $i, $e := $union }}
+{{ $i }}: {{ .Name }}
+{{ end }}$
+-- assets/a1.html --
+<div>file1</div>
+-- assets/a2.html --
+<div>file2</div>
+-- assets/a3_b1.html --
+<div>file3</div>
+-- assets/b2.html --
+<div>file4</div>
+`
+
+	b := hugolib.Test(t, files)
+
+	b.AssertFileContentExact("public/index.html", "0: /a3_b1.html\n\n1: /b2.html\n\n2: /a1.html\n\n3: /a2.html\n$")
 }

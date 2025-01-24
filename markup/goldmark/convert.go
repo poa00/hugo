@@ -18,15 +18,16 @@ import (
 	"bytes"
 
 	"github.com/gohugoio/hugo-goldmark-extensions/extras"
-	"github.com/gohugoio/hugo-goldmark-extensions/passthrough"
-	"github.com/gohugoio/hugo/markup/goldmark/hugocontext"
-	"github.com/yuin/goldmark/util"
-
+	"github.com/gohugoio/hugo/markup/goldmark/blockquotes"
 	"github.com/gohugoio/hugo/markup/goldmark/codeblocks"
 	"github.com/gohugoio/hugo/markup/goldmark/goldmark_config"
+	"github.com/gohugoio/hugo/markup/goldmark/hugocontext"
 	"github.com/gohugoio/hugo/markup/goldmark/images"
 	"github.com/gohugoio/hugo/markup/goldmark/internal/extensions/attributes"
 	"github.com/gohugoio/hugo/markup/goldmark/internal/render"
+	"github.com/gohugoio/hugo/markup/goldmark/passthrough"
+	"github.com/gohugoio/hugo/markup/goldmark/tables"
+	"github.com/yuin/goldmark/util"
 
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
@@ -42,6 +43,7 @@ import (
 )
 
 const (
+	// Don't change this. This pattern is lso used in the image render hooks.
 	internalAttrPrefix = "_h__"
 )
 
@@ -105,9 +107,10 @@ func newMarkdown(pcfg converter.ProviderConfig) goldmark.Markdown {
 		renderer.WithNodeRenderers(util.Prioritized(emoji.NewHTMLRenderer(), 200)))
 	var (
 		extensions = []goldmark.Extender{
-			hugocontext.New(),
+			hugocontext.New(pcfg.Logger),
 			newLinks(cfg),
 			newTocExtension(tocRendererOptions),
+			blockquotes.New(),
 		}
 		parserOptions []parser.Option
 	)
@@ -130,6 +133,7 @@ func newMarkdown(pcfg converter.ProviderConfig) goldmark.Markdown {
 
 	if cfg.Extensions.Table {
 		extensions = append(extensions, extension.Table)
+		extensions = append(extensions, tables.New())
 	}
 
 	if cfg.Extensions.Strikethrough {
@@ -177,32 +181,7 @@ func newMarkdown(pcfg converter.ProviderConfig) goldmark.Markdown {
 	}
 
 	if cfg.Extensions.Passthrough.Enable {
-		configuredInlines := cfg.Extensions.Passthrough.Delimiters.Inline
-		configuredBlocks := cfg.Extensions.Passthrough.Delimiters.Block
-
-		inlineDelimiters := make([]passthrough.Delimiters, len(configuredInlines))
-		blockDelimiters := make([]passthrough.Delimiters, len(configuredBlocks))
-
-		for i, d := range configuredInlines {
-			inlineDelimiters[i] = passthrough.Delimiters{
-				Open:  d[0],
-				Close: d[1],
-			}
-		}
-
-		for i, d := range configuredBlocks {
-			blockDelimiters[i] = passthrough.Delimiters{
-				Open:  d[0],
-				Close: d[1],
-			}
-		}
-
-		extensions = append(extensions, passthrough.New(
-			passthrough.Config{
-				InlineDelimiters: inlineDelimiters,
-				BlockDelimiters:  blockDelimiters,
-			},
-		))
+		extensions = append(extensions, passthrough.New(cfg.Extensions.Passthrough))
 	}
 
 	if pcfg.Conf.EnableEmoji() {

@@ -27,7 +27,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bep/logg"
 	"github.com/bep/simplecobra"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gohugoio/hugo/common/herrors"
@@ -134,10 +133,6 @@ func (e *hugoBuilderErrState) wasErr() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.waserr
-}
-
-func (c *hugoBuilder) errCount() int {
-	return c.r.logger.LoggCount(logg.LevelError) + loggers.Log().LoggCount(logg.LevelError)
 }
 
 // getDirList provides NewWatcher() with a list of directories to watch for changes.
@@ -345,7 +340,6 @@ func (c *hugoBuilder) newWatcher(pollIntervalStr string, dirList ...string) (*wa
 		for {
 			select {
 			case changes := <-c.r.changesFromBuild:
-				c.errState.setBuildErr(nil)
 				unlock, err := h.LockBuild()
 				if err != nil {
 					c.r.logger.Errorln("Failed to acquire a build lock: %s", err)
@@ -358,7 +352,7 @@ func (c *hugoBuilder) newWatcher(pollIntervalStr string, dirList ...string) (*wa
 				}
 				if c.s != nil && c.s.doLiveReload {
 					doReload := c.changeDetector == nil || len(c.changeDetector.changed()) > 0
-					doReload = doReload || c.showErrorInBrowser && c.errCount() > 0
+					doReload = doReload || c.showErrorInBrowser && c.errState.buildErr() != nil
 					if doReload {
 						livereload.ForceRefresh()
 					}
@@ -372,7 +366,7 @@ func (c *hugoBuilder) newWatcher(pollIntervalStr string, dirList ...string) (*wa
 					return
 				}
 				c.handleEvents(watcher, staticSyncer, evs, configSet)
-				if c.showErrorInBrowser && c.errCount() > 0 {
+				if c.showErrorInBrowser && c.errState.buildErr() != nil {
 					// Need to reload browser to show the error
 					livereload.ForceRefresh()
 				}
@@ -419,11 +413,17 @@ func (c *hugoBuilder) build() error {
 }
 
 func (c *hugoBuilder) buildSites(noBuildLock bool) (err error) {
-	h, err := c.hugo()
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
+
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
-	return h.Build(hugolib.BuildCfg{NoBuildLock: noBuildLock})
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: noBuildLock})
+	return
 }
 
 func (c *hugoBuilder) copyStatic() (map[string]uint64, error) {
@@ -619,6 +619,9 @@ func (c *hugoBuilder) fullRebuild(changeType string) {
 			// Set the processing on pause until the state is recovered.
 			c.errState.setPaused(true)
 			c.handleBuildErr(err, "Failed to reload config")
+			if c.s.doLiveReload {
+				livereload.ForceRefresh()
+			}
 		} else {
 			c.errState.setPaused(false)
 		}
@@ -779,6 +782,7 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 		istemp := strings.HasSuffix(ext, "~") ||
 			(ext == ".swp") || // vim
 			(ext == ".swx") || // vim
+			(ext == ".bck") || // helix
 			(ext == ".tmp") || // generic temp file
 			(ext == ".DS_Store") || // OSX Thumbnail
 			baseName == "4913" || // vim
@@ -916,7 +920,11 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 
 			changed := c.changeDetector.changed()
 			if c.changeDetector != nil {
-				lrl.Logf("build changed %d files", len(changed))
+				if len(changed) >= 10 {
+					lrl.Logf("build changed %d files", len(changed))
+				} else {
+					lrl.Logf("build changed %d files: %q", len(changed), changed)
+				}
 				if len(changed) == 0 {
 					// Nothing has changed.
 					return
@@ -962,7 +970,7 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 					pathToRefresh := h.PathSpec.RelURL(paths.ToSlashTrimLeading(otherChanges[0]), false)
 					lrl.Logf("refreshing %q", pathToRefresh)
 					livereload.RefreshPath(pathToRefresh)
-				} else if len(cssChanges) == 0 {
+				} else if len(cssChanges) == 0 || len(otherChanges) > 1 {
 					lrl.Logf("force refresh")
 					livereload.ForceRefresh()
 				}
@@ -1046,7 +1054,7 @@ func (c *hugoBuilder) loadConfig(cd *simplecobra.Commandeer, running bool) error
 		"fastRenderMode": c.fastRenderMode,
 	})
 
-	conf, err := c.r.ConfigFromProvider(c.r.configVersionID.Load(), flagsToCfg(cd, cfg))
+	conf, err := c.r.ConfigFromProvider(configKey{counter: c.r.configVersionID.Load()}, flagsToCfg(cd, cfg))
 	if err != nil {
 		return err
 	}
@@ -1080,42 +1088,49 @@ func (c *hugoBuilder) printChangeDetected(typ string) {
 	c.r.logger.Println(htime.Now().Format(layout))
 }
 
-func (c *hugoBuilder) rebuildSites(events []fsnotify.Event) error {
+func (c *hugoBuilder) rebuildSites(events []fsnotify.Event) (err error) {
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
 	if err := c.errState.buildErr(); err != nil {
 		ferrs := herrors.UnwrapFileErrorsWithErrorContext(err)
 		for _, err := range ferrs {
 			events = append(events, fsnotify.Event{Name: err.Position().Filename, Op: fsnotify.Write})
 		}
 	}
-	c.errState.setBuildErr(nil)
-	h, err := c.hugo()
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
-
-	return h.Build(hugolib.BuildCfg{NoBuildLock: true, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()}, events...)
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: true, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()}, events...)
+	return
 }
 
-func (c *hugoBuilder) rebuildSitesForChanges(ids []identity.Identity) error {
-	c.errState.setBuildErr(nil)
-	h, err := c.hugo()
+func (c *hugoBuilder) rebuildSitesForChanges(ids []identity.Identity) (err error) {
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
+
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
 	whatChanged := &hugolib.WhatChanged{}
 	whatChanged.Add(ids...)
 	err = h.Build(hugolib.BuildCfg{NoBuildLock: true, WhatChanged: whatChanged, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()})
-	c.errState.setBuildErr(err)
-	return err
+
+	return
 }
 
 func (c *hugoBuilder) reloadConfig() error {
-	c.r.Reset()
+	c.r.resetLogs()
 	c.r.configVersionID.Add(1)
 
 	if err := c.withConfE(func(conf *commonConfig) error {
 		oldConf := conf
-		newConf, err := c.r.ConfigFromConfig(c.r.configVersionID.Load(), conf)
+		newConf, err := c.r.ConfigFromConfig(configKey{counter: c.r.configVersionID.Load()}, conf)
 		if err != nil {
 			return err
 		}

@@ -250,10 +250,6 @@ func (h *HugoSites) process(ctx context.Context, l logg.LevelLogger, config *Bui
 	l = l.WithField("step", "process")
 	defer loggers.TimeTrackf(l, time.Now(), nil, "")
 
-	if _, err := h.init.layouts.Do(ctx); err != nil {
-		return err
-	}
-
 	if len(events) > 0 {
 		// This is a rebuild triggered from file events.
 		return h.processPartialFileEvents(ctx, l, config, init, events)
@@ -347,6 +343,22 @@ func (h *HugoSites) render(l logg.LevelLogger, config *BuildCfg) error {
 
 	siteRenderContext := &siteRenderContext{cfg: config, multihost: h.Configs.IsMultihost}
 
+	renderErr := func(err error) error {
+		if err == nil {
+			return nil
+		}
+		// In Hugo 0.141.0 we replaced the special error handling for resources.GetRemote
+		// with the more general try.
+		if strings.Contains(err.Error(), "can't evaluate field Err in type") {
+			if strings.Contains(err.Error(), "resource.Resource") {
+				return fmt.Errorf("%s: Resource.Err was removed in Hugo v0.141.0 and replaced with a new try keyword, see https://gohugo.io/functions/go-template/try/", err)
+			} else if strings.Contains(err.Error(), "template.HTML") {
+				return fmt.Errorf("%s: the return type of transform.ToMath was changed in Hugo v0.141.0 and the error handling replaced with a new try keyword, see https://gohugo.io/functions/go-template/try/", err)
+			}
+		}
+		return err
+	}
+
 	i := 0
 	for _, s := range h.Sites {
 		segmentFilter := s.conf.C.SegmentFilter
@@ -394,7 +406,7 @@ func (h *HugoSites) render(l logg.LevelLogger, config *BuildCfg) error {
 							}
 						} else {
 							if err := s.render(siteRenderContext); err != nil {
-								return err
+								return renderErr(err)
 							}
 						}
 						loggers.TimeTrackf(ll, start, nil, "")
@@ -500,6 +512,7 @@ func (s *Site) executeDeferredTemplates(de *deps.DeferredExecutions) error {
 				}
 
 				content = append(content[:low], append([]byte(deferred.Result), content[high:]...)...)
+				forward = len(deferred.Result)
 				changed = true
 
 				return nil
@@ -524,8 +537,9 @@ func (s *Site) executeDeferredTemplates(de *deps.DeferredExecutions) error {
 		},
 	})
 
-	de.FilenamesWithPostPrefix.ForEeach(func(filename string, _ bool) {
+	de.FilenamesWithPostPrefix.ForEeach(func(filename string, _ bool) bool {
 		g.Enqueue(filename)
+		return true
 	})
 
 	return g.Wait()
@@ -741,15 +755,15 @@ type pathChange struct {
 	// The path to the changed file.
 	p *paths.Path
 
-	// If true, this is a delete operation (a delete or a rename).
-	delete bool
+	// If true, this is a structural change (e.g. a delete or a rename).
+	structural bool
 
 	// If true, this is a directory.
 	isDir bool
 }
 
 func (p pathChange) isStructuralChange() bool {
-	return p.delete || p.isDir
+	return p.structural || p.isDir
 }
 
 func (h *HugoSites) processPartialRebuildChanges(ctx context.Context, l logg.LevelLogger, config *BuildCfg) error {
@@ -915,7 +929,7 @@ func (h *HugoSites) processPartialFileEvents(ctx context.Context, l logg.LevelLo
 				}
 			}
 
-			addedOrChangedContent = append(addedOrChangedContent, pathChange{p: pathInfo, delete: delete, isDir: isDir})
+			addedOrChangedContent = append(addedOrChangedContent, pathChange{p: pathInfo, structural: delete, isDir: isDir})
 
 		case files.ComponentFolderLayouts:
 			tmplChanged = true
@@ -1036,6 +1050,16 @@ func (h *HugoSites) processPartialFileEvents(ctx context.Context, l logg.LevelLo
 		handleChange(id, false, true)
 	}
 
+	for _, id := range changes {
+		if id == identity.GenghisKhan {
+			for i, cp := range addedOrChangedContent {
+				cp.structural = true
+				addedOrChangedContent[i] = cp
+			}
+			break
+		}
+	}
+
 	resourceFiles := h.fileEventsContentPaths(addedOrChangedContent)
 
 	changed := &WhatChanged{
@@ -1062,13 +1086,13 @@ func (h *HugoSites) processPartialFileEvents(ctx context.Context, l logg.LevelLo
 		}
 	}
 
+	h.Deps.OnChangeListeners.Notify(changed.Changes()...)
+
 	if err := h.resolveAndClearStateForIdentities(ctx, l, cacheBusterOr, changed.Drain()); err != nil {
 		return err
 	}
 
 	if tmplChanged || i18nChanged {
-		// TODO(bep) we should split this, but currently the loading of i18n and layout files are tied together. See #12048.
-		h.init.layouts.Reset()
 		if err := loggers.TimeTrackfn(func() (logg.LevelLogger, error) {
 			// TODO(bep) this could probably be optimized to somehow
 			// only load the changed templates and its dependencies, but that is non-trivial.
@@ -1141,10 +1165,6 @@ func (s *Site) handleContentAdapterChanges(bi pagesfromdata.BuildInfo, buildConf
 }
 
 func (h *HugoSites) processContentAdaptersOnRebuild(ctx context.Context, buildConfig *BuildCfg) error {
-	// Make sure the layouts are initialized.
-	if _, err := h.init.layouts.Do(context.Background()); err != nil {
-		return err
-	}
 	g := rungroup.Run[*pagesfromdata.PagesFromTemplate](ctx, rungroup.Config[*pagesfromdata.PagesFromTemplate]{
 		NumWorkers: h.numWorkers,
 		Handle: func(ctx context.Context, p *pagesfromdata.PagesFromTemplate) error {

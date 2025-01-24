@@ -327,6 +327,25 @@ var allDecoderSetups = map[string]decodeWeight{
 			return err
 		},
 	},
+	"page": {
+		key: "page",
+		decode: func(d decodeWeight, p decodeConfig) error {
+			p.c.Page = config.PageConfig{
+				NextPrevSortOrder:          "desc",
+				NextPrevInSectionSortOrder: "desc",
+			}
+			if p.p.IsSet(d.key) {
+				if err := mapstructure.WeakDecode(p.p.Get(d.key), &p.c.Page); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+		getCompiler: func(c *Config) configCompiler {
+			return &c.Page
+		},
+	},
 	"pagination": {
 		key: "pagination",
 		decode: func(d decodeWeight, p decodeConfig) error {
@@ -400,6 +419,8 @@ var allDecoderSetups = map[string]decodeWeight{
 				p.c.UglyURLs = vv
 			case string:
 				p.c.UglyURLs = vv == "true"
+			case maps.Params:
+				p.c.UglyURLs = cast.ToStringMapBool(maps.CleanConfigStringMap(vv))
 			default:
 				p.c.UglyURLs = cast.ToStringMapBool(v)
 			}

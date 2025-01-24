@@ -37,7 +37,7 @@ For a complete guide to contributing to Hugo, see the [Contribution Guide].
 [contributing]: CONTRIBUTING.md
 [create a proposal]: https://github.com/gohugoio/hugo/issues/new?labels=Proposal%2C+NeedsTriage&template=feature_request.md
 [documentation repository]: https://github.com/gohugoio/hugoDocs
-[documentation]: https://gohugo.io/documentation
+[documentation]: /documentation
 [forum]: https://discourse.gohugo.io
 [issue queue]: https://github.com/gohugoio/hugo/issues
 [themes]: https://themes.gohugo.io/
@@ -45,10 +45,10 @@ For a complete guide to contributing to Hugo, see the [Contribution Guide].
 
 ## Prerequisites
 
-To build the extended edition of Hugo from source you must:
+To build the extended or extended/deploy edition from source you must:
 
 1. Install [Git]
-1. Install [Go] version 1.20 or later
+1. Install [Go] version 1.23.0 or later
 1. Install a C compiler, either [GCC] or [Clang]
 1. Update your `PATH` environment variable as described in the [Go documentation]
 
@@ -97,10 +97,24 @@ Step 4
 : Make changes.
 
 Step 5
-: Compile and install:
+: Compile and install.
+
+To compile and install the standard edition:
+
+```text
+go install
+```
+
+To compile and install the extended edition:
 
 ```text
 CGO_ENABLED=1 go install -tags extended
+```
+
+To compile and install the extended/deploy edition:
+
+```text
+CGO_ENABLED=1 go install -tags extended,withdeploy
 ```
 
 Step 6
@@ -158,7 +172,7 @@ CGO_ENABLED=1 go install -tags extended github.com/gohugoio/hugo@latest
 To build and install a specific release:
 
 ```sh
-CGO_ENABLED=1 go install -tags extended github.com/gohugoio/hugo@v0.126.0
+CGO_ENABLED=1 go install -tags extended github.com/gohugoio/hugo@v0.141.0
 ```
 
 To build and install at the latest commit on the master branch:

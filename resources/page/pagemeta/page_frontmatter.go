@@ -114,9 +114,9 @@ type PageConfig struct {
 	Content Source
 
 	// Compiled values.
-	CascadeCompiled      map[page.PageMatcher]maps.Params
-	ContentMediaType     media.Type `mapstructure:"-" json:"-"`
-	IsFromContentAdapter bool       `mapstructure:"-" json:"-"`
+	CascadeCompiled      *maps.Ordered[page.PageMatcher, maps.Params] `mapstructure:"-" json:"-"`
+	ContentMediaType     media.Type                                   `mapstructure:"-" json:"-"`
+	IsFromContentAdapter bool                                         `mapstructure:"-" json:"-"`
 }
 
 var DefaultPageConfig = PageConfig{
@@ -329,6 +329,9 @@ type FrontMatterDescriptor struct {
 	// This is the Page's base filename (BaseFilename), e.g. page.md., or
 	// if page is a leaf bundle, the bundle folder name (ContentBaseName).
 	BaseFilename string
+
+	// The Page's path if the page is backed by a file, else its title.
+	PathOrTitle string
 
 	// The content file's mod time.
 	ModTime time.Time
@@ -725,7 +728,7 @@ func (f *frontmatterFieldHandlers) newDateFieldHandler(key string, setter func(d
 	return func(d *FrontMatterDescriptor) (bool, error) {
 		v, found := d.PageConfig.Params[key]
 
-		if !found {
+		if !found || v == "" || v == nil {
 			return false, nil
 		}
 
@@ -736,7 +739,7 @@ func (f *frontmatterFieldHandlers) newDateFieldHandler(key string, setter func(d
 			var err error
 			date, err = htime.ToTimeInDefaultLocationE(v, d.Location)
 			if err != nil {
-				return false, nil
+				return false, fmt.Errorf("the %q front matter field is not a parsable date: see %s", key, d.PathOrTitle)
 			}
 			d.PageConfig.Params[key] = date
 		}

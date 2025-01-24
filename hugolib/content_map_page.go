@@ -109,6 +109,11 @@ type pageMap struct {
 	cfg contentMapConfig
 }
 
+// Invoked on rebuilds.
+func (m *pageMap) Reset() {
+	m.pageReverseIndex.Reset()
+}
+
 // pageTrees holds pages and resources in a tree structure for all sites/languages.
 // Each site gets its own tree set via the Shape method.
 type pageTrees struct {
@@ -504,8 +509,23 @@ func (m *pageMap) forEachResourceInPage(
 			// A page key points to the logical path of a page, which when sourced from the filesystem
 			// may represent a directory (bundles) or a single content file (e.g. p1.md).
 			// So, to avoid any overlapping ambiguity, we start looking from the owning directory.
-			ownerKey, _ := m.treePages.LongestPrefixAll(path.Dir(resourceKey))
-			if ownerKey != keyPage {
+			s := resourceKey
+
+			for {
+				s = path.Dir(s)
+				ownerKey, found := m.treePages.LongestPrefixAll(s)
+				if !found {
+					return true, nil
+				}
+				if ownerKey == keyPage {
+					break
+				}
+
+				if s != ownerKey && strings.HasPrefix(s, ownerKey) {
+					// Keep looking
+					continue
+				}
+
 				// Stop walking downwards, someone else owns this resource.
 				rw.SkipPrefix(ownerKey + "/")
 				return false, nil
@@ -560,7 +580,7 @@ func (m *pageMap) getOrCreateResourcesForPage(ps *pageState) resource.Resources 
 				for _, r := range res2 {
 					var found bool
 					for _, r2 := range res {
-						if r2.(resource.NameNormalizedProvider).NameNormalized() == r.(resource.NameNormalizedProvider).NameNormalized() {
+						if resource.NameNormalizedOrName(r2) == resource.NameNormalizedOrName(r) {
 							found = true
 							break
 						}
@@ -919,61 +939,58 @@ func newPageMap(i int, s *Site, mcache *dynacache.Cache, pageTrees *pageTrees) *
 		s: s,
 	}
 
-	m.pageReverseIndex = &contentTreeReverseIndex{
-		initFn: func(rm map[any]contentNodeI) {
-			add := func(k string, n contentNodeI) {
-				existing, found := rm[k]
-				if found && existing != ambiguousContentNode {
-					rm[k] = ambiguousContentNode
-				} else if !found {
-					rm[k] = n
+	m.pageReverseIndex = newContentTreeTreverseIndex(func(get func(key any) (contentNodeI, bool), set func(key any, val contentNodeI)) {
+		add := func(k string, n contentNodeI) {
+			existing, found := get(k)
+			if found && existing != ambiguousContentNode {
+				set(k, ambiguousContentNode)
+			} else if !found {
+				set(k, n)
+			}
+		}
+
+		w := &doctree.NodeShiftTreeWalker[contentNodeI]{
+			Tree:     m.treePages,
+			LockType: doctree.LockTypeRead,
+			Handle: func(s string, n contentNodeI, match doctree.DimensionFlag) (bool, error) {
+				p := n.(*pageState)
+				if p.PathInfo() != nil {
+					add(p.PathInfo().BaseNameNoIdentifier(), p)
 				}
-			}
+				return false, nil
+			},
+		}
 
-			w := &doctree.NodeShiftTreeWalker[contentNodeI]{
-				Tree:     m.treePages,
-				LockType: doctree.LockTypeRead,
-				Handle: func(s string, n contentNodeI, match doctree.DimensionFlag) (bool, error) {
-					p := n.(*pageState)
-					if p.PathInfo() != nil {
-						add(p.PathInfo().BaseNameNoIdentifier(), p)
-					}
-					return false, nil
-				},
-			}
-
-			if err := w.Walk(context.Background()); err != nil {
-				panic(err)
-			}
-		},
-		contentTreeReverseIndexMap: &contentTreeReverseIndexMap{},
-	}
+		if err := w.Walk(context.Background()); err != nil {
+			panic(err)
+		}
+	})
 
 	return m
 }
 
-type contentTreeReverseIndex struct {
-	initFn func(rm map[any]contentNodeI)
-	*contentTreeReverseIndexMap
-}
-
-func (c *contentTreeReverseIndex) Reset() {
-	c.contentTreeReverseIndexMap = &contentTreeReverseIndexMap{
-		m: make(map[any]contentNodeI),
+func newContentTreeTreverseIndex(init func(get func(key any) (contentNodeI, bool), set func(key any, val contentNodeI))) *contentTreeReverseIndex {
+	return &contentTreeReverseIndex{
+		initFn: init,
+		mm:     maps.NewCache[any, contentNodeI](),
 	}
 }
 
-func (c *contentTreeReverseIndex) Get(key any) contentNodeI {
-	c.init.Do(func() {
-		c.m = make(map[any]contentNodeI)
-		c.initFn(c.contentTreeReverseIndexMap.m)
-	})
-	return c.m[key]
+type contentTreeReverseIndex struct {
+	initFn func(get func(key any) (contentNodeI, bool), set func(key any, val contentNodeI))
+	mm     *maps.Cache[any, contentNodeI]
 }
 
-type contentTreeReverseIndexMap struct {
-	init sync.Once
-	m    map[any]contentNodeI
+func (c *contentTreeReverseIndex) Reset() {
+	c.mm.Reset()
+}
+
+func (c *contentTreeReverseIndex) Get(key any) contentNodeI {
+	v, _ := c.mm.InitAndGet(key, func(get func(key any) (contentNodeI, bool), set func(key any, val contentNodeI)) error {
+		c.initFn(get, set)
+		return nil
+	})
+	return v
 }
 
 type sitePagesAssembler struct {
@@ -1272,7 +1289,7 @@ func (h *HugoSites) resolveAndResetDependententPageOutputs(ctx context.Context, 
 
 		po.renderState = 0
 		po.p.resourcesPublishInit = &sync.Once{}
-		if r == identity.FinderFoundOneOfMany {
+		if r == identity.FinderFoundOneOfMany || po.f.Name == output.HTTPStatusHTMLFormat.Name {
 			// Will force a re-render even in fast render mode.
 			po.renderOnce = false
 		}
@@ -1308,6 +1325,7 @@ func (h *HugoSites) resolveAndResetDependententPageOutputs(ctx context.Context, 
 				if !po.isRendered() {
 					continue
 				}
+
 				for _, id := range changes {
 					checkedCounter.Add(1)
 					if r := depsFinder.Contains(id, po.dependencyManagerOutput, 50); r > identity.FinderFoundOneOfManyRepetition {
@@ -1369,7 +1387,7 @@ func (sa *sitePagesAssembler) applyAggregates() error {
 		}
 
 		// Handle cascades first to get any default dates set.
-		var cascade map[page.PageMatcher]maps.Params
+		var cascade *maps.Ordered[page.PageMatcher, maps.Params]
 		if keyPage == "" {
 			// Home page gets it's cascade from the site config.
 			cascade = sa.conf.Cascade.Config
@@ -1381,7 +1399,7 @@ func (sa *sitePagesAssembler) applyAggregates() error {
 		} else {
 			_, data := pw.WalkContext.Data().LongestPrefix(keyPage)
 			if data != nil {
-				cascade = data.(map[page.PageMatcher]maps.Params)
+				cascade = data.(*maps.Ordered[page.PageMatcher, maps.Params])
 			}
 		}
 
@@ -1463,11 +1481,11 @@ func (sa *sitePagesAssembler) applyAggregates() error {
 				pageResource := rs.r.(*pageState)
 				relPath := pageResource.m.pathInfo.BaseRel(pageBundle.m.pathInfo)
 				pageResource.m.resourcePath = relPath
-				var cascade map[page.PageMatcher]maps.Params
+				var cascade *maps.Ordered[page.PageMatcher, maps.Params]
 				// Apply cascade (if set) to the page.
 				_, data := pw.WalkContext.Data().LongestPrefix(resourceKey)
 				if data != nil {
-					cascade = data.(map[page.PageMatcher]maps.Params)
+					cascade = data.(*maps.Ordered[page.PageMatcher, maps.Params])
 				}
 				if err := pageResource.setMetaPost(cascade); err != nil {
 					return false, err
@@ -1531,10 +1549,10 @@ func (sa *sitePagesAssembler) applyAggregatesToTaxonomiesAndTerms() error {
 				const eventName = "dates"
 
 				if p.Kind() == kinds.KindTerm {
-					var cascade map[page.PageMatcher]maps.Params
+					var cascade *maps.Ordered[page.PageMatcher, maps.Params]
 					_, data := pw.WalkContext.Data().LongestPrefix(s)
 					if data != nil {
-						cascade = data.(map[page.PageMatcher]maps.Params)
+						cascade = data.(*maps.Ordered[page.PageMatcher, maps.Params])
 					}
 					if err := p.setMetaPost(cascade); err != nil {
 						return false, err
@@ -1593,6 +1611,10 @@ func (sa *sitePagesAssembler) applyAggregatesToTaxonomiesAndTerms() error {
 }
 
 func (sa *sitePagesAssembler) assembleTermsAndTranslations() error {
+	if sa.pageMap.cfg.taxonomyTermDisabled {
+		return nil
+	}
+
 	var (
 		pages   = sa.pageMap.treePages
 		entries = sa.pageMap.treeTaxonomyEntries
@@ -1607,10 +1629,6 @@ func (sa *sitePagesAssembler) assembleTermsAndTranslations() error {
 			ps := n.(*pageState)
 
 			if ps.m.noLink() {
-				return false, nil
-			}
-
-			if sa.pageMap.cfg.taxonomyTermDisabled {
 				return false, nil
 			}
 
@@ -1672,6 +1690,7 @@ func (sa *sitePagesAssembler) assembleTermsAndTranslations() error {
 					})
 				}
 			}
+
 			return false, nil
 		},
 	}
@@ -1751,6 +1770,11 @@ func (sa *sitePagesAssembler) assembleResources() error {
 						mt = rs.rc.ContentMediaType
 					}
 
+					var filename string
+					if rs.fi != nil {
+						filename = rs.fi.Meta().Filename
+					}
+
 					rd := resources.ResourceSourceDescriptor{
 						OpenReadSeekCloser:   rs.opener,
 						Path:                 rs.path,
@@ -1759,6 +1783,7 @@ func (sa *sitePagesAssembler) assembleResources() error {
 						TargetBasePaths:      targetBasePaths,
 						BasePathRelPermalink: targetPaths.SubResourceBaseLink,
 						BasePathTargetPath:   baseTarget,
+						SourceFilenameOrPath: filename,
 						NameNormalized:       relPath,
 						NameOriginal:         relPathOriginal,
 						MediaType:            mt,

@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/gobuffalo/flect"
-	"github.com/gohugoio/hugo/identity"
 	"github.com/gohugoio/hugo/langs"
 	"github.com/gohugoio/hugo/markup/converter"
 	xmaps "golang.org/x/exp/maps"
@@ -32,7 +31,7 @@ import (
 	"github.com/gohugoio/hugo/source"
 
 	"github.com/gohugoio/hugo/common/constants"
-	"github.com/gohugoio/hugo/common/hugo"
+	"github.com/gohugoio/hugo/common/hashing"
 	"github.com/gohugoio/hugo/common/loggers"
 	"github.com/gohugoio/hugo/common/maps"
 	"github.com/gohugoio/hugo/common/paths"
@@ -88,8 +87,8 @@ type pageMetaParams struct {
 
 	// These are only set in watch mode.
 	datesOriginal   pagemeta.Dates
-	paramsOriginal  map[string]any                   // contains the original params as defined in the front matter.
-	cascadeOriginal map[page.PageMatcher]maps.Params // contains the original cascade as defined in the front matter.
+	paramsOriginal  map[string]any                               // contains the original params as defined in the front matter.
+	cascadeOriginal *maps.Ordered[page.PageMatcher, maps.Params] // contains the original cascade as defined in the front matter.
 }
 
 // From page front matter.
@@ -97,32 +96,15 @@ type pageMetaFrontMatter struct {
 	configuredOutputFormats output.Formats // outputs defined in front matter.
 }
 
-func (m *pageMetaParams) init(preserveOringal bool) {
-	if preserveOringal {
+func (m *pageMetaParams) init(preserveOriginal bool) {
+	if preserveOriginal {
 		m.paramsOriginal = xmaps.Clone[maps.Params](m.pageConfig.Params)
-		m.cascadeOriginal = xmaps.Clone[map[page.PageMatcher]maps.Params](m.pageConfig.CascadeCompiled)
+		m.cascadeOriginal = m.pageConfig.CascadeCompiled.Clone()
 	}
 }
 
 func (p *pageMeta) Aliases() []string {
 	return p.pageConfig.Aliases
-}
-
-// Deprecated: Use taxonomies instead.
-func (p *pageMeta) Author() page.Author {
-	hugo.Deprecate(".Page.Author", "Use taxonomies instead.", "v0.98.0")
-	authors := p.Authors()
-
-	for _, author := range authors {
-		return author
-	}
-	return page.Author{}
-}
-
-// Deprecated: Use taxonomies instead.
-func (p *pageMeta) Authors() page.AuthorList {
-	hugo.Deprecate(".Page.Authors", "Use taxonomies instead.", "v0.112.0")
-	return nil
 }
 
 func (p *pageMeta) BundleType() string {
@@ -324,22 +306,22 @@ func (p *pageMeta) setMetaPre(pi *contentParseInfo, logger loggers.Logger, conf 
 	return nil
 }
 
-func (ps *pageState) setMetaPost(cascade map[page.PageMatcher]maps.Params) error {
+func (ps *pageState) setMetaPost(cascade *maps.Ordered[page.PageMatcher, maps.Params]) error {
 	ps.m.setMetaPostCount++
 	var cascadeHashPre uint64
 	if ps.m.setMetaPostCount > 1 {
-		cascadeHashPre = identity.HashUint64(ps.m.pageConfig.CascadeCompiled)
-		ps.m.pageConfig.CascadeCompiled = xmaps.Clone[map[page.PageMatcher]maps.Params](ps.m.cascadeOriginal)
+		cascadeHashPre = hashing.HashUint64(ps.m.pageConfig.CascadeCompiled)
+		ps.m.pageConfig.CascadeCompiled = ps.m.cascadeOriginal.Clone()
 
 	}
 
 	// Apply cascades first so they can be overridden later.
 	if cascade != nil {
 		if ps.m.pageConfig.CascadeCompiled != nil {
-			for k, v := range cascade {
-				vv, found := ps.m.pageConfig.CascadeCompiled[k]
+			cascade.Range(func(k page.PageMatcher, v maps.Params) bool {
+				vv, found := ps.m.pageConfig.CascadeCompiled.Get(k)
 				if !found {
-					ps.m.pageConfig.CascadeCompiled[k] = v
+					ps.m.pageConfig.CascadeCompiled.Set(k, v)
 				} else {
 					// Merge
 					for ck, cv := range v {
@@ -348,7 +330,8 @@ func (ps *pageState) setMetaPost(cascade map[page.PageMatcher]maps.Params) error
 						}
 					}
 				}
-			}
+				return true
+			})
 			cascade = ps.m.pageConfig.CascadeCompiled
 		} else {
 			ps.m.pageConfig.CascadeCompiled = cascade
@@ -360,7 +343,7 @@ func (ps *pageState) setMetaPost(cascade map[page.PageMatcher]maps.Params) error
 	}
 
 	if ps.m.setMetaPostCount > 1 {
-		ps.m.setMetaPostCascadeChanged = cascadeHashPre != identity.HashUint64(ps.m.pageConfig.CascadeCompiled)
+		ps.m.setMetaPostCascadeChanged = cascadeHashPre != hashing.HashUint64(ps.m.pageConfig.CascadeCompiled)
 		if !ps.m.setMetaPostCascadeChanged {
 
 			// No changes, restore any value that may be changed by aggregation.
@@ -372,16 +355,17 @@ func (ps *pageState) setMetaPost(cascade map[page.PageMatcher]maps.Params) error
 	}
 
 	// Cascade is also applied to itself.
-	for m, v := range cascade {
-		if !m.Matches(ps) {
-			continue
+	cascade.Range(func(k page.PageMatcher, v maps.Params) bool {
+		if !k.Matches(ps) {
+			return true
 		}
 		for kk, vv := range v {
 			if _, found := ps.m.pageConfig.Params[kk]; !found {
 				ps.m.pageConfig.Params[kk] = vv
 			}
 		}
-	}
+		return true
+	})
 
 	if err := ps.setMetaPostParams(); err != nil {
 		return err
@@ -425,6 +409,7 @@ func (p *pageState) setMetaPostParams() error {
 		ModTime:       mtime,
 		GitAuthorDate: gitAuthorDate,
 		Location:      langs.GetLocation(pm.s.Language()),
+		PathOrTitle:   p.pathOrTitle(),
 	}
 
 	// Handle the date separately
@@ -821,7 +806,7 @@ func (p *pageMeta) newContentConverter(ps *pageState, markup string) (converter.
 			// This prevents infinite recursion in some cases.
 			return doc
 		}
-		if v, ok := ps.pageOutput.pco.otherOutputs[id]; ok {
+		if v, ok := ps.pageOutput.pco.otherOutputs.Get(id); ok {
 			return v.po.p
 		}
 		return nil

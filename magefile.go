@@ -148,7 +148,11 @@ func Check() {
 		fmt.Printf("Skip Test386 on %s and/or %s\n", runtime.GOARCH, runtime.GOOS)
 	}
 
-	mg.Deps(Fmt, Vet)
+	if isCi() && isDarwin() {
+		// Skip on macOS in CI (disk space issues)
+	} else {
+		mg.Deps(Fmt, Vet)
+	}
 
 	// don't run two tests in parallel, they saturate the CPUs anyway, and running two
 	// causes memory issues in CI.
@@ -239,6 +243,14 @@ func Lint() error {
 	return nil
 }
 
+func isCi() bool {
+	return os.Getenv("CI") != ""
+}
+
+func isDarwin() bool {
+	return runtime.GOOS == "darwin"
+}
+
 // Run go vet linter
 func Vet() error {
 	if err := sh.Run(goexe, "vet", "./..."); err != nil {
@@ -322,7 +334,7 @@ func buildFlags() []string {
 func buildTags() string {
 	// To build the extended Hugo SCSS/SASS enabled version, build with
 	// HUGO_BUILD_TAGS=extended mage install etc.
-	// To build without `hugo deploy` for smaller binary, use HUGO_BUILD_TAGS=nodeploy
+	// To build with `hugo deploy`, use HUGO_BUILD_TAGS=withdeploy
 	if envtags := os.Getenv("HUGO_BUILD_TAGS"); envtags != "" {
 		return envtags
 	}

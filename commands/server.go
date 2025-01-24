@@ -32,6 +32,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,7 @@ import (
 	"time"
 
 	"github.com/bep/mclib"
+	"github.com/pkg/browser"
 
 	"github.com/bep/debounce"
 	"github.com/bep/simplecobra"
@@ -209,16 +211,17 @@ func (f *fileChangeDetector) changed() []string {
 		}
 	}
 
-	return f.filterIrrelevant(c)
+	return f.filterIrrelevantAndSort(c)
 }
 
-func (f *fileChangeDetector) filterIrrelevant(in []string) []string {
+func (f *fileChangeDetector) filterIrrelevantAndSort(in []string) []string {
 	var filtered []string
 	for _, v := range in {
 		if !f.irrelevantRe.MatchString(v) {
 			filtered = append(filtered, v)
 		}
 	}
+	sort.Strings(filtered)
 	return filtered
 }
 
@@ -448,6 +451,7 @@ type serverCommand struct {
 	// Flags.
 	renderStaticToDisk  bool
 	navigateToChanged   bool
+	openBrowser         bool
 	serverAppend        bool
 	serverInterface     string
 	tlsCertFile         string
@@ -508,7 +512,7 @@ func (c *serverCommand) Run(ctx context.Context, cd *simplecobra.Commandeer, arg
 
 func (c *serverCommand) Init(cd *simplecobra.Commandeer) error {
 	cmd := cd.CobraCommand
-	cmd.Short = "A high performance webserver"
+	cmd.Short = "Start the embedded web server"
 	cmd.Long = `Hugo provides its own webserver which builds and serves the site.
 While hugo server is high performance, it is a webserver with limited options.
 
@@ -539,6 +543,7 @@ of a second, you will be able to save and see your changes nearly instantly.`
 	cmd.Flags().BoolVarP(&c.serverAppend, "appendPort", "", true, "append port to baseURL")
 	cmd.Flags().BoolVar(&c.disableLiveReload, "disableLiveReload", false, "watch without enabling live browser reload on rebuild")
 	cmd.Flags().BoolVarP(&c.navigateToChanged, "navigateToChanged", "N", false, "navigate to changed content file on live browser reload")
+	cmd.Flags().BoolVarP(&c.openBrowser, "openBrowser", "O", false, "open the site in a browser after server startup")
 	cmd.Flags().BoolVar(&c.renderStaticToDisk, "renderStaticToDisk", false, "serve static files from disk and dynamic files from memory")
 	cmd.Flags().BoolVar(&c.disableFastRender, "disableFastRender", false, "enables full re-renders on changes")
 	cmd.Flags().BoolVar(&c.disableBrowserError, "disableBrowserError", false, "do not show build errors in the browser")
@@ -648,9 +653,8 @@ func (c *serverCommand) setServerInfoInConfig() error {
 }
 
 func (c *serverCommand) getErrorWithContext() any {
-	errCount := c.errCount()
-
-	if errCount == 0 {
+	buildErr := c.errState.buildErr()
+	if buildErr == nil {
 		return nil
 	}
 
@@ -659,7 +663,7 @@ func (c *serverCommand) getErrorWithContext() any {
 	m["Error"] = cleanErrorLog(c.r.logger.Errors())
 
 	m["Version"] = hugo.BuildVersionString()
-	ferrors := herrors.UnwrapFileErrorsWithErrorContext(c.errState.buildErr())
+	ferrors := herrors.UnwrapFileErrorsWithErrorContext(buildErr)
 	m["Files"] = ferrors
 
 	return m
@@ -830,22 +834,25 @@ func (c *serverCommand) fixURL(baseURLFromConfig, baseURLFromFlag string, port i
 	return u.String(), nil
 }
 
-func (c *serverCommand) partialReRender(urls ...string) error {
+func (c *serverCommand) partialReRender(urls ...string) (err error) {
 	defer func() {
 		c.errState.setWasErr(false)
 	}()
-	c.errState.setBuildErr(nil)
 	visited := types.NewEvictingStringQueue(len(urls))
 	for _, url := range urls {
 		visited.Add(url)
 	}
 
-	h, err := c.hugo()
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
+
 	// Note: We do not set NoBuildLock as the file lock is not acquired at this stage.
-	return h.Build(hugolib.BuildCfg{NoBuildLock: false, RecentlyVisited: visited, PartialReRender: true, ErrRecovery: c.errState.wasErr()})
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: false, RecentlyVisited: visited, PartialReRender: true, ErrRecovery: c.errState.wasErr()})
+
+	return
 }
 
 func (c *serverCommand) serve() error {
@@ -996,6 +1003,13 @@ func (c *serverCommand) serve() error {
 
 	c.r.Println("Press Ctrl+C to stop")
 
+	if c.openBrowser {
+		// There may be more than one baseURL in multihost mode, open the first.
+		if err := browser.OpenURL(baseURLs[0].String()); err != nil {
+			c.r.logger.Warnf("Failed to open browser: %s", err)
+		}
+	}
+
 	err = func() error {
 		for {
 			select {
@@ -1010,10 +1024,6 @@ func (c *serverCommand) serve() error {
 	}()
 	if err != nil {
 		c.r.Println("Error:", err)
-	}
-
-	if h := c.hugoTry(); h != nil {
-		h.Close()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

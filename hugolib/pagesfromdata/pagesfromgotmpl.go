@@ -19,6 +19,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/gohugoio/hugo/common/hashing"
 	"github.com/gohugoio/hugo/common/maps"
 	"github.com/gohugoio/hugo/common/paths"
 	"github.com/gohugoio/hugo/helpers"
@@ -219,7 +220,7 @@ type BuildState struct {
 }
 
 func (b *BuildState) hash(v any) uint64 {
-	return identity.HashUint64(v)
+	return hashing.HashUint64(v)
 }
 
 func (b *BuildState) checkHasChangedAndSetSourceInfo(changedPath string, v any) bool {
@@ -244,10 +245,11 @@ func (b *BuildState) resolveDeletedPaths() {
 		return
 	}
 	var paths []string
-	b.sourceInfosPrevious.ForEeach(func(k string, _ *sourceInfo) {
+	b.sourceInfosPrevious.ForEeach(func(k string, _ *sourceInfo) bool {
 		if _, found := b.sourceInfosCurrent.Get(k); !found {
 			paths = append(paths, k)
 		}
+		return true
 	})
 
 	b.DeletedPaths = paths
@@ -284,6 +286,10 @@ func (p PagesFromTemplate) CloneForGoTmpl(fi hugofs.FileMetaInfo) *PagesFromTemp
 
 func (p *PagesFromTemplate) GetDependencyManagerForScope(scope int) identity.Manager {
 	return p.DependencyManager
+}
+
+func (p *PagesFromTemplate) GetDependencyManagerForScopesAll() []identity.Manager {
+	return []identity.Manager{p.DependencyManager}
 }
 
 func (p *PagesFromTemplate) Execute(ctx context.Context) (BuildInfo, error) {

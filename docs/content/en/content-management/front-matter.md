@@ -39,15 +39,7 @@ weight = 10
 author = 'John Smith'
 {{< /code-toggle >}}
 
-Front matter fields may be [scalar], [arrays], or [maps] containing [boolean], [integer], [float], or [string] values. Note that the TOML format also supports date/time values using unquoted strings.
-
-[scalar]: /getting-started/glossary/#scalar
-[arrays]: /getting-started/glossary/#array
-[maps]: /getting-started/glossary/#map
-[boolean]: /getting-started/glossary/#boolean
-[integer]: /getting-started/glossary/#integer
-[float]: /getting-started/glossary/#float
-[string]: /getting-started/glossary/#string
+Front matter fields may be [boolean](g), [integer](g), [float](g), [string](g), [arrays](g), or [maps](g). Note that the TOML format also supports unquoted date/time values.
 
 ## Fields
 
@@ -80,7 +72,7 @@ The field names below are reserved. For example, you cannot create a custom fiel
 
 ###### date
 
-(`string`) The date associated with the page, typically the creation date. Note that the TOML format also supports date/time values using unquoted strings. Access this value from a template using the [`Date`] method on a `Page` object.
+(`string`) The date associated with the page, typically the creation date. Note that the TOML format also supports unquoted date/time values. See the [dates](#dates) section for examples. Access this value from a template using the [`Date`] method on a `Page` object.
 
 [`date`]: /methods/page/date/
 
@@ -99,7 +91,7 @@ If `true`, the page will not be rendered unless you pass the `--buildDrafts` fla
 
 ###### expiryDate
 
-(`string`) The page expiration date. On or after the expiration date, the page will not be rendered unless you pass the `--buildExpired` flag to the `hugo` command. Note that the TOML format also supports date/time values using unquoted strings. Access this value from a template using the [`ExpiryDate`] method on a `Page` object.
+(`string`) The page expiration date. On or after the expiration date, the page will not be rendered unless you pass the `--buildExpired` flag to the `hugo` command. Note that the TOML format also supports unquoted date/time values. See the [dates](#dates) section for examples. Access this value from a template using the [`ExpiryDate`] method on a `Page` object.
 
 [`expirydate`]: /methods/page/expirydate/
 
@@ -112,20 +104,18 @@ If `true`, the page will not be rendered unless you pass the `--buildDrafts` fla
 
 ###### isCJKLanguage
 
-(`bool`) Set to `true` if the content language is in the [CJK] family. This value determines how Hugo calculates word count, and affects the values returned by the [`WordCount`], [`FuzzyWordCount`], [`ReadingTime`], and [`Summary`] methods on a `Page` object.
+(`bool`) Set to `true` if the content language is in the [CJK](g) family. This value determines how Hugo calculates word count, and affects the values returned by the [`WordCount`], [`FuzzyWordCount`], [`ReadingTime`], and [`Summary`] methods on a `Page` object.
 
 [`fuzzywordcount`]: /methods/page/wordcount/
 [`readingtime`]: /methods/page/readingtime/
 [`summary`]: /methods/page/summary/
 [`wordcount`]: /methods/page/wordcount/
-[cjk]: /getting-started/glossary/#cjk
 
 ###### keywords
 
-(`string array`) An array of keywords, typically rendered within a `meta` element within the `head` element of the published HTML file, or used as a [taxonomy] to classify content. Access these values from a template using the [`Keywords`] method on a `Page` object.
+(`string array`) An array of keywords, typically rendered within a `meta` element within the `head` element of the published HTML file, or used as a [taxonomy](g) to classify content. Access these values from a template using the [`Keywords`] method on a `Page` object.
 
 [`keywords`]: /methods/page/keywords/
-[taxonomy]: /getting-started/glossary/#taxonomy
 
 <!-- Added in v0.123.0 but purposefully omitted from documentation. -->
 <!--
@@ -141,7 +131,7 @@ lang
 
 ###### lastmod
 
-(`string`) The date that the page was last modified. Note that the TOML format also supports date/time values using unquoted strings. Access this value from a template using the [`Lastmod`] method on a `Page` object.
+(`string`) The date that the page was last modified. Note that the TOML format also supports unquoted date/time values. See the [dates](#dates) section for examples. Access this value from a template using the [`Lastmod`] method on a `Page` object.
 
 [`lastmod`]: /methods/page/date/
 
@@ -151,7 +141,7 @@ lang
 
 [`layout`]: /methods/page/layout/
 [template lookup order]: /templates/lookup-order/
-[target a specific template]: templates/lookup-order/#target-a-template
+[target a specific template]: /templates/lookup-order/#target-a-template
 
 ###### linkTitle
 
@@ -167,9 +157,13 @@ lang
 
 ###### menus
 
-(`string`,`string array`, or `map`) If set, Hugo adds the page to the given menu or menus. See the [menus] page for details.
+(`string`, `string array`, or `map`) If set, Hugo adds the page to the given menu or menus. See the [menus] page for details.
 
 [menus]: /content-management/menus/#define-in-front-matter
+
+###### modified
+
+Alias to [lastmod](#lastmod).
 
 ###### outputs
 
@@ -191,11 +185,19 @@ path
 
 [page parameters]: #parameters
 
+###### pubdate
+
+Alias to [publishDate](#publishdate).
+
 ###### publishDate
 
-(`string`) The page publication date. Before the publication date, the page will not be rendered unless you pass the `--buildFuture` flag to the `hugo` command. Note that the TOML format also supports date/time values using unquoted strings. Access this value from a template using the [`PublishDate`] method on a `Page` object.
+(`string`) The page publication date. Before the publication date, the page will not be rendered unless you pass the `--buildFuture` flag to the `hugo` command. Note that the TOML format also supports unquoted date/time values. See the [dates](#dates) section for examples. Access this value from a template using the [`PublishDate`] method on a `Page` object.
 
 [`publishdate`]: /methods/page/publishdate/
+
+###### published
+
+Alias to [publishDate](#publishdate).
 
 ###### resources
 
@@ -207,7 +209,7 @@ path
 
 (`map`) A map of sitemap options. See the [sitemap templates] page for details. Access these values from a template using the [`Sitemap`] method on a `Page` object.
 
-[sitemap templates]: /templates/sitemap-template/
+[sitemap templates]: /templates/sitemap/
 [`sitemap`]: /methods/page/sitemap/
 
 ###### slug
@@ -237,20 +239,21 @@ path
 
 ###### type
 
-(`string`) The [content type], overriding the value derived from the top level section in which the page resides. Access this value from a template using the [`Type`] method on a `Page` object.
+(`string`) The [content type](g), overriding the value derived from the top level section in which the page resides. Access this value from a template using the [`Type`] method on a `Page` object.
 
-[content type]: /getting-started/glossary/#content-type
 [`type`]: /methods/page/type/
+
+###### unpublishdate
+
+Alias to [expirydate](#expirydate).
 
 ###### url
 
 (`string`) Overrides the entire URL path. Applicable to regular pages and section pages. See the [URL management] page for details.
 
 ###### weight
-(`int`) The page [weight], used to order the page within a [page collection]. Access this value from a template using the [`Weight`] method on a `Page` object.
+(`int`) The page [weight](g), used to order the page within a [page collection](g). Access this value from a template using the [`Weight`] method on a `Page` object.
 
-[page collection]: /getting-started/glossary/#page-collection
-[weight]: /getting-started/glossary/#weight
 [`weight`]: /methods/page/weight/
 
 ## Parameters
@@ -281,7 +284,7 @@ Parameter|Data type|Used by these embedded templates
 `images`|`[]string`|[`opengraph.html`], [`schema.html`], [`twitter_cards.html`]
 `videos`|`[]string`|[`opengraph.html`]
 
-The embedded templates will skip a parameter if not provided in front matter, but will throw an error if the data type is unexpected. 
+The embedded templates will skip a parameter if not provided in front matter, but will throw an error if the data type is unexpected.
 
 [`opengraph.html`]: {{% eturl opengraph %}}
 [`schema.html`]: {{% eturl schema %}}
@@ -311,15 +314,13 @@ genres = ['mystery','romance']
 author = 'John Smith'
 {{< /code-toggle >}}
 
-You can add taxonomy terms to the front matter of any these [page kinds]:
+You can add taxonomy terms to the front matter of any these [page kinds](g):
 
 - `home`
 - `page`
 - `section`
 - `taxonomy`
 - `term`
-
-[page kinds]: /getting-started/glossary/#page-kind
 
 Access taxonomy terms from a template using the [`Params`] or [`GetTerms`] method on a `Page` object. For example:
 
@@ -339,9 +340,7 @@ Access taxonomy terms from a template using the [`Params`] or [`GetTerms`] metho
 
 ## Cascade
 
-Any [node] can pass down to its descendants a set of front matter values.
-
-[node]: /getting-started/glossary/#node
+Any [node](g) can pass down to its descendants a set of front matter values.
 
 ### Target specific pages
 
@@ -428,3 +427,15 @@ Note that you can also specify array elements on a single line:
 
 [content format]: /content-management/formats/
 [emacs org mode]: https://orgmode.org/
+
+## Dates
+
+When populating a date field, whether a [custom page parameter](#parameters) or one of the four predefined fields ([`date`](#date), [`expiryDate`](#expirydate), [`lastmod`](#lastmod), [`publishDate`](#publishdate)), use one of these parsable formats:
+
+{{% include "functions/time/_common/parsable-date-time-strings.md" %}}
+
+To override the default time zone, set the [`timeZone`](https://gohugo.io/getting-started/configuration/#timezone) in your site configuration. The order of precedence for determining the time zone is:
+
+1. The time zone offset in the date/time string
+1. The time zone specified in your site configuration
+1. The `Etc/UTC` time zone

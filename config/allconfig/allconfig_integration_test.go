@@ -103,31 +103,7 @@ suffixes = ["html", "xhtml"]
 	b.Assert(contentTypes.Markdown.Suffixes(), qt.DeepEquals, []string{"md", "mdown", "markdown"})
 }
 
-func TestPaginationConfigOld(t *testing.T) {
-	files := `
--- hugo.toml --
- [languages.en]
- weight = 1
- paginatePath = "page-en"
- 
- [languages.de]
- weight = 2
- paginatePath = "page-de"
- paginate = 20
-`
-
-	b := hugolib.Test(t, files)
-
-	confEn := b.H.Sites[0].Conf.Pagination()
-	confDe := b.H.Sites[1].Conf.Pagination()
-
-	b.Assert(confEn.Path, qt.Equals, "page-en")
-	b.Assert(confEn.PagerSize, qt.Equals, 10)
-	b.Assert(confDe.Path, qt.Equals, "page-de")
-	b.Assert(confDe.PagerSize, qt.Equals, 20)
-}
-
-func TestPaginationConfigNew(t *testing.T) {
+func TestPaginationConfig(t *testing.T) {
 	files := `
 -- hugo.toml --
  [languages.en]
@@ -183,4 +159,59 @@ title: "p3"
 
 	b.AssertFileExists("public/page/1/index.html", false)
 	b.AssertFileContent("public/page/2/index.html", "pagination-default")
+}
+
+func TestMapUglyURLs(t *testing.T) {
+	files := `
+-- hugo.toml --
+[uglyurls]
+  posts = true
+`
+
+	b := hugolib.Test(t, files)
+
+	c := b.H.Configs.Base
+
+	b.Assert(c.C.IsUglyURLSection("posts"), qt.IsTrue)
+	b.Assert(c.C.IsUglyURLSection("blog"), qt.IsFalse)
+}
+
+// Issue 13199
+func TestInvalidOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- hugo.toml --
+disableKinds = ['page','rss','section','sitemap','taxonomy','term']
+[outputs]
+home = ['html','foo']
+-- layouts/index.html --
+x
+`
+
+	b, err := hugolib.TestE(t, files)
+	b.Assert(err, qt.IsNotNil)
+	b.Assert(err.Error(), qt.Contains, `failed to create config: unknown output format "foo" for kind "home"`)
+}
+
+// Issue 13201
+func TestLanguageConfigSlice(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- hugo.toml --
+disableKinds = ['page','rss','section','sitemap','taxonomy','term']
+[languages.en]
+title = 'TITLE_EN'
+weight = 2
+[languages.de]
+title = 'TITLE_DE'
+weight = 1
+[languages.fr]
+title = 'TITLE_FR'
+weight = 3
+`
+
+	b := hugolib.Test(t, files)
+	b.Assert(b.H.Configs.LanguageConfigSlice[0].Title, qt.Equals, `TITLE_DE`)
 }

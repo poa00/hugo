@@ -12,9 +12,11 @@ aliases: [/tutorials/github-pages-blog/]
 
 ## Prerequisites
 
+Please complete the following tasks before continuing:
+
 1. [Create a GitHub account]
-2. [Install Git]
-3. [Create a Hugo site] and test it locally with `hugo server`.
+1. [Install Git]
+1. [Create a Hugo site] and test it locally with `hugo server`.
 
 [Create a GitHub account]: https://github.com/signup
 [Install Git]: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
@@ -53,10 +55,11 @@ Step 4
 {style="max-width: 280px"}
 
 Step 5
-: Create an empty file in your local repository.
+: Create a file named `hugo.yaml` in a directory named `.github/workflows`.
 
 ```text
-.github/workflows/hugo.yaml
+mkdir -p .github/workflows
+touch hugo.yaml
 ```
 
 Step 6
@@ -97,7 +100,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HUGO_VERSION: 0.127.0
+      HUGO_VERSION: 0.141.0
     steps:
       - name: Install Hugo CLI
         run: |
@@ -112,14 +115,13 @@ jobs:
           fetch-depth: 0
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
       - name: Install Node.js dependencies
         run: "[[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true"
       - name: Build with Hugo
         env:
-          # For maximum backward compatibility with Hugo modules
+          HUGO_CACHEDIR: ${{ runner.temp }}/hugo_cache
           HUGO_ENVIRONMENT: production
-          HUGO_ENV: production
           TZ: America/Los_Angeles
         run: |
           hugo \
@@ -145,7 +147,13 @@ jobs:
 {{< /code >}}
 
 Step 7
-: Commit the change to your local repository with a commit message of something like "Add workflow", and push to GitHub.
+: Commit and push the change to your GitHub repository.
+
+```sh
+git add -A
+git commit -m "Create hugo.yaml"
+git push
+```
 
 Step 8
 : From GitHub's main menu, choose **Actions**. You will see something like this:
@@ -182,7 +190,7 @@ You may remove this step if your site, themes, and modules do not transpile Sass
 
 [Dart Sass]: /hugo-pipes/transpile-sass-to-css/#dart-sass
 
-## Additional resources
+## Other resources
 
 - [Learn more about GitHub Actions](https://docs.github.com/en/actions)
 - [Caching dependencies to speed up workflows](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows)

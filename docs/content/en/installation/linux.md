@@ -10,7 +10,12 @@ menu:
 weight: 30
 toc: true
 ---
+
+## Editions
+
 {{% include "installation/_common/01-editions.md" %}}
+
+Unless your specific deployment needs require the extended/deploy edition, we recommend the extended edition.
 
 {{% include "installation/_common/02-prerequisites.md" %}}
 
@@ -116,8 +121,7 @@ To install the extended edition of Hugo on [Exherbo]:
    www-apps/hugo extended
    ```
 
-2. Install using the Paludis package manager:
-
+1. Install using the Paludis package manager:
 
    ```sh
    cave resolve -x repository/heirecka
@@ -146,7 +150,7 @@ Derivatives of the [Gentoo] distribution of Linux include [Calculate Linux], [Fu
     www-apps/hugo extended
     ```
 
-2. Build using the Portage package manager:
+1. Build using the Portage package manager:
 
     ```sh
     sudo emerge www-apps/hugo
@@ -156,6 +160,14 @@ Derivatives of the [Gentoo] distribution of Linux include [Calculate Linux], [Fu
 [Funtoo]: https://www.funtoo.org/
 [Gentoo]: https://www.gentoo.org/
 [USE]: https://packages.gentoo.org/packages/www-apps/hugo
+
+### NixOS
+
+The NixOS distribution of Linux includes Hugo in its package repository. To install the extended edition of Hugo:
+
+```sh
+nix-env -iA nixos.hugo
+```
 
 ### openSUSE
 
@@ -178,6 +190,16 @@ sudo eopkg install hugo
 ```
 
 [Solus]: https://getsol.us/
+
+### Void Linux
+
+To install the extended edition of Hugo on [Void Linux]:
+
+```sh
+sudo xbps-install -S hugo
+```
+
+[Void Linux]: https://voidlinux.org/
 
 {{% include "installation/_common/04-build-from-source.md" %}}
 

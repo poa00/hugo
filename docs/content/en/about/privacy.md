@@ -15,7 +15,7 @@ aliases: [/gdpr/,/about/hugo-and-gdpr/]
 
  General Data Protection Regulation ([GDPR](https://en.wikipedia.org/wiki/General_Data_Protection_Regulation)) is a regulation in EU law on data protection and privacy for all individuals within the European Union and the European Economic Area. It became enforceable on 25 May 2018.
 
- **Hugo is a static site generator. By using Hugo you are already standing on very solid ground. Static HTML files on disk are much easier to reason about compared to server and database driven web sites.**
+ **Hugo is a static site generator. By using Hugo you are already standing on very solid ground. Static HTML files on disk are much easier to reason about compared to server and database driven websites.**
 
  But even static websites can integrate with external services, so from version `0.41`, Hugo provides a **privacy configuration** that covers the relevant built-in templates.
 
@@ -39,11 +39,11 @@ respectDoNotTrack = false
 [privacy.instagram]
 disable = false
 simple = false
-[privacy.twitter]
+[privacy.vimeo]
 disable = false
 enableDNT = false
 simple = false
-[privacy.vimeo]
+[privacy.x]
 disable = false
 enableDNT = false
 simple = false
@@ -64,9 +64,9 @@ disable = true
 disable = true
 [privacy.instagram]
 disable = true
-[privacy.twitter]
-disable = true
 [privacy.vimeo]
+disable = true
+[privacy.x]
 disable = true
 [privacy.youtube]
 disable = true
@@ -92,19 +92,19 @@ simple
 disableInlineCSS = true
 {{< /code-toggle >}}
 
-### Twitter
+### X
 
 enableDNT
-: Enabling this for the twitter/tweet shortcode, the tweet and its embedded page on your site are not used for purposes that include personalized suggestions and personalized ads.
+: Enabling this for the x shortcode, the post and its embedded page on your site are not used for purposes that include personalized suggestions and personalized ads.
 
 simple
-: If simple mode is enabled, a static and no-JS version of a tweet will be built.
+: If simple mode is enabled, a static and no-JS version of a post will be built.
 
-**Note:** If you use the _simple mode_ for Twitter, you may want to disable the inline styles provided by Hugo:
+**Note:** If you use the _simple mode_ for X, you may want to disable the inline styles provided by Hugo:
 
 {{< code-toggle file=hugo >}}
 [services]
-[services.twitter]
+[services.x]
 disableInlineCSS = true
 {{< /code-toggle >}}
 
