@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/gohugoio/hugo/common/hexec"
+	"github.com/gohugoio/hugo/common/loggers"
 	"github.com/gohugoio/hugo/config/security"
 	"github.com/gohugoio/hugo/hugofs/glob"
 
@@ -51,13 +52,17 @@ github.com/gohugoio/hugoTestModules1_darwin/modh2_2@v1.4.0 github.com/gohugoio/h
 		themesDir := filepath.Join(workingDir, "themes")
 		err = os.Mkdir(themesDir, 0o777)
 		c.Assert(err, qt.IsNil)
+		publishDir := filepath.Join(workingDir, "public")
+		err = os.Mkdir(publishDir, 0o777)
+		c.Assert(err, qt.IsNil)
 
 		ccfg := ClientConfig{
 			Fs:         hugofs.Os,
-			WorkingDir: workingDir,
 			CacheDir:   filepath.Join(workingDir, "modcache"),
+			WorkingDir: workingDir,
 			ThemesDir:  themesDir,
-			Exec:       hexec.New(security.DefaultConfig),
+			PublishDir: publishDir,
+			Exec:       hexec.New(security.DefaultConfig, "", loggers.NewDefault()),
 		}
 
 		withConfig(&ccfg)

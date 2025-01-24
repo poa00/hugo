@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/bep/gitmap"
+	"github.com/gohugoio/hugo/common/hashing"
 	"github.com/gohugoio/hugo/common/hugo"
 	"github.com/gohugoio/hugo/common/paths"
 	"github.com/gohugoio/hugo/media"
@@ -26,8 +27,6 @@ import (
 	"github.com/gohugoio/hugo/common/hugio"
 
 	"github.com/gohugoio/hugo/hugofs"
-
-	"github.com/gohugoio/hugo/helpers"
 )
 
 // File describes a source file.
@@ -55,13 +54,6 @@ func (fi *File) Path() string { return filepath.Join(fi.p().Dir()[1:], fi.p().Na
 // relative to the content root.
 func (fi *File) Dir() string {
 	return fi.pathToDir(fi.p().Dir())
-}
-
-// Extension is an alias to Ext().
-// Deprecated: Use Ext() instead.
-func (fi *File) Extension() string {
-	hugo.Deprecate(".File.Extension", "Use .File.Ext instead.", "v0.96.0")
-	return fi.Ext()
 }
 
 // Ext returns a file's extension without the leading period (e.g. "md").
@@ -125,7 +117,7 @@ func (fi *File) IsZero() bool {
 // in some cases that is slightly expensive to construct.
 func (fi *File) init() {
 	fi.lazyInit.Do(func() {
-		fi.uniqueID = helpers.MD5String(filepath.ToSlash(fi.Path()))
+		fi.uniqueID = hashing.MD5FromStringHexEncoded(filepath.ToSlash(fi.Path()))
 	})
 }
 
@@ -175,6 +167,8 @@ type GitInfo struct {
 	AuthorDate time.Time `json:"authorDate"`
 	// The commit date.
 	CommitDate time.Time `json:"commitDate"`
+	// The commit message's body.
+	Body string `json:"body"`
 }
 
 // IsZero returns true if the GitInfo is empty,

@@ -43,7 +43,7 @@ Within a range block:
 
 ## Understanding context
 
-At the top of a page template, the [context] (the dot) is a `Page` object. Within the `range` block, the context is bound to each successive element.
+At the top of a page template, the [context](g) (the dot) is a `Page` object. Within the `range` block, the context is bound to each successive element.
 
 With this contrived example that uses the [`seq`] function to generate a slice of integers:
 
@@ -75,8 +75,7 @@ This template will render the page title three times:
 Gaining a thorough understanding of context is critical for anyone writing template code.
 {{% /note %}}
 
-[`seq`]: functions/collections/seq/
-[context]: /getting-started/glossary/#context
+[`seq`]: /functions/collections/seq/
 
 ## Array or slice of scalars
 
@@ -194,6 +193,6 @@ Unlike ranging over an array or slice, Hugo sorts by key when ranging over a map
 
 {{% include "functions/go-template/_common/text-template.md" %}}
 
-[`else`]: /functions/go-template/else
-[`break`]: /functions/go-template/break
-[`continue`]: /functions/go-template/continue
+[`else`]: /functions/go-template/else/
+[`break`]: /functions/go-template/break/
+[`continue`]: /functions/go-template/continue/

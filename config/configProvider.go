@@ -52,14 +52,13 @@ type AllProvider interface {
 	DefaultContentLanguageInSubdir() bool
 	IsLangDisabled(string) bool
 	SummaryLength() int
-	Paginate() int
-	PaginatePath() string
+	Pagination() Pagination
 	BuildExpired() bool
 	BuildFuture() bool
 	BuildDrafts() bool
 	Running() bool
 	Watching() bool
-	NewIdentityManager(name string) identity.Manager
+	NewIdentityManager(name string, opts ...identity.ManagerOption) identity.Manager
 	FastRenderMode() bool
 	PrintUnusedTemplates() bool
 	EnableMissingTranslationPlaceholders() bool

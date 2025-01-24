@@ -14,6 +14,7 @@
 package hugo
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"os"
@@ -24,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	godartsassv1 "github.com/bep/godartsass"
 	"github.com/bep/logg"
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/bep/godartsass/v2"
+	"github.com/gohugoio/hugo/common/hcontext"
 	"github.com/gohugoio/hugo/common/hexec"
 	"github.com/gohugoio/hugo/common/loggers"
+	"github.com/gohugoio/hugo/common/maps"
 	"github.com/gohugoio/hugo/hugofs/files"
 
 	"github.com/spf13/afero"
@@ -53,6 +54,8 @@ var (
 	vendorInfo string
 )
 
+var _ maps.StoreProvider = (*HugoInfo)(nil)
+
 // HugoInfo contains information about the current Hugo environment
 type HugoInfo struct {
 	CommitHash string
@@ -69,6 +72,11 @@ type HugoInfo struct {
 
 	conf ConfigProvider
 	deps []*Dependency
+
+	store *maps.Scratch
+
+	// Context gives access to some of the context scoped variables.
+	Context Context
 }
 
 // Version returns the current version as a comparable version string.
@@ -111,6 +119,10 @@ func (i HugoInfo) Deps() []*Dependency {
 	return i.deps
 }
 
+func (i HugoInfo) Store() *maps.Scratch {
+	return i.store
+}
+
 // Deprecated: Use hugo.IsMultihost instead.
 func (i HugoInfo) IsMultiHost() bool {
 	Deprecate("hugo.IsMultiHost", "Use hugo.IsMultihost instead.", "v0.124.0")
@@ -125,6 +137,26 @@ func (i HugoInfo) IsMultihost() bool {
 // IsMultilingual reports whether there are two or more configured languages.
 func (i HugoInfo) IsMultilingual() bool {
 	return i.conf.IsMultilingual()
+}
+
+type contextKey string
+
+var markupScope = hcontext.NewContextDispatcher[string](contextKey("markupScope"))
+
+type Context struct{}
+
+func (c Context) MarkupScope(ctx context.Context) string {
+	return GetMarkupScope(ctx)
+}
+
+// SetMarkupScope sets the markup scope in the context.
+func SetMarkupScope(ctx context.Context, s string) context.Context {
+	return markupScope.Set(ctx, s)
+}
+
+// GetMarkupScope gets the markup scope from the context.
+func GetMarkupScope(ctx context.Context) string {
+	return markupScope.Get(ctx)
 }
 
 // ConfigProvider represents the config options that are relevant for HugoInfo.
@@ -160,6 +192,7 @@ func NewInfo(conf ConfigProvider, deps []*Dependency) HugoInfo {
 		Environment: conf.Environment(),
 		conf:        conf,
 		deps:        deps,
+		store:       maps.NewScratch(),
 		GoVersion:   goVersion,
 	}
 }
@@ -276,14 +309,14 @@ func GetDependencyListNonGo() []string {
 	if IsExtended {
 		deps = append(
 			deps,
-			formatDep("github.com/sass/libsass", "3.6.5"),
+			formatDep("github.com/sass/libsass", "3.6.6"),
 			formatDep("github.com/webmproject/libwebp", "v1.3.2"),
 		)
 	}
 
 	if dartSass := dartSassVersion(); dartSass.ProtocolVersion != "" {
 		dartSassPath := "github.com/sass/dart-sass-embedded"
-		if IsDartSassV2() {
+		if IsDartSassGeV2() {
 			dartSassPath = "github.com/sass/dart-sass"
 		}
 		deps = append(deps,
@@ -330,22 +363,15 @@ type Dependency struct {
 }
 
 func dartSassVersion() godartsass.DartSassVersion {
-	if DartSassBinaryName == "" {
+	if DartSassBinaryName == "" || !IsDartSassGeV2() {
 		return godartsass.DartSassVersion{}
 	}
-	if IsDartSassV2() {
-		v, _ := godartsass.Version(DartSassBinaryName)
-		return v
-	}
-
-	v, _ := godartsassv1.Version(DartSassBinaryName)
-	var vv godartsass.DartSassVersion
-	mapstructure.WeakDecode(v, &vv)
-	return vv
+	v, _ := godartsass.Version(DartSassBinaryName)
+	return v
 }
 
 // DartSassBinaryName is the name of the Dart Sass binary to use.
-// TODO(beop) find a better place for this.
+// TODO(bep) find a better place for this.
 var DartSassBinaryName string
 
 func init() {
@@ -370,7 +396,10 @@ var (
 	dartSassBinaryNamesV2 = []string{"dart-sass", "sass"}
 )
 
-func IsDartSassV2() bool {
+// TODO(bep) we eventually want to remove this, but keep it for a while to throw an informative error.
+// We stopped supporting the old binary in Hugo 0.139.0.
+func IsDartSassGeV2() bool {
+	// dart-sass-embedded was the first version of the embedded Dart Sass before it was moved into the main project.
 	return !strings.Contains(DartSassBinaryName, "embedded")
 }
 
@@ -394,10 +423,10 @@ func DeprecateLevel(item, alternative, version string, level logg.Level) {
 		msg = fmt.Sprintf("%s was deprecated in Hugo %s and will be removed in a future release. %s", item, version, alternative)
 	}
 
-	loggers.Log().Logger().WithLevel(level).WithField(loggers.FieldNameCmd, "deprecated").Logf(msg)
+	loggers.Log().Logger().WithLevel(level).WithField(loggers.FieldNameCmd, "deprecated").Logf("%s", msg)
 }
 
-// We ususally do about one minor version a month.
+// We usually do about one minor version a month.
 // We want people to run at least the current and previous version without any warnings.
 // We want people who don't update Hugo that often to see the warnings and errors before we remove the feature.
 func deprecationLogLevelFromVersion(ver string) logg.Level {

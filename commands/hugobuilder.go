@@ -27,7 +27,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bep/logg"
 	"github.com/bep/simplecobra"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gohugoio/hugo/common/herrors"
@@ -43,6 +42,7 @@ import (
 	"github.com/gohugoio/hugo/hugofs"
 	"github.com/gohugoio/hugo/hugolib"
 	"github.com/gohugoio/hugo/hugolib/filesystems"
+	"github.com/gohugoio/hugo/identity"
 	"github.com/gohugoio/hugo/livereload"
 	"github.com/gohugoio/hugo/resources/page"
 	"github.com/gohugoio/hugo/watcher"
@@ -133,10 +133,6 @@ func (e *hugoBuilderErrState) wasErr() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.waserr
-}
-
-func (c *hugoBuilder) errCount() int {
-	return c.r.logger.LoggCount(logg.LevelError) + loggers.Log().LoggCount(logg.LevelError)
 }
 
 // getDirList provides NewWatcher() with a list of directories to watch for changes.
@@ -343,6 +339,26 @@ func (c *hugoBuilder) newWatcher(pollIntervalStr string, dirList ...string) (*wa
 	go func() {
 		for {
 			select {
+			case changes := <-c.r.changesFromBuild:
+				unlock, err := h.LockBuild()
+				if err != nil {
+					c.r.logger.Errorln("Failed to acquire a build lock: %s", err)
+					return
+				}
+				c.changeDetector.PrepareNew()
+				err = c.rebuildSitesForChanges(changes)
+				if err != nil {
+					c.r.logger.Errorln("Error while watching:", err)
+				}
+				if c.s != nil && c.s.doLiveReload {
+					doReload := c.changeDetector == nil || len(c.changeDetector.changed()) > 0
+					doReload = doReload || c.showErrorInBrowser && c.errState.buildErr() != nil
+					if doReload {
+						livereload.ForceRefresh()
+					}
+				}
+				unlock()
+
 			case evs := <-watcher.Events:
 				unlock, err := h.LockBuild()
 				if err != nil {
@@ -350,7 +366,7 @@ func (c *hugoBuilder) newWatcher(pollIntervalStr string, dirList ...string) (*wa
 					return
 				}
 				c.handleEvents(watcher, staticSyncer, evs, configSet)
-				if c.showErrorInBrowser && c.errCount() > 0 {
+				if c.showErrorInBrowser && c.errState.buildErr() != nil {
 					// Need to reload browser to show the error
 					livereload.ForceRefresh()
 				}
@@ -397,11 +413,17 @@ func (c *hugoBuilder) build() error {
 }
 
 func (c *hugoBuilder) buildSites(noBuildLock bool) (err error) {
-	h, err := c.hugo()
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
+
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
-	return h.Build(hugolib.BuildCfg{NoBuildLock: noBuildLock})
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: noBuildLock})
+	return
 }
 
 func (c *hugoBuilder) copyStatic() (map[string]uint64, error) {
@@ -597,6 +619,9 @@ func (c *hugoBuilder) fullRebuild(changeType string) {
 			// Set the processing on pause until the state is recovered.
 			c.errState.setPaused(true)
 			c.handleBuildErr(err, "Failed to reload config")
+			if c.s.doLiveReload {
+				livereload.ForceRefresh()
+			}
 		} else {
 			c.errState.setPaused(false)
 		}
@@ -722,6 +747,20 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 	staticEvents := []fsnotify.Event{}
 	dynamicEvents := []fsnotify.Event{}
 
+	filterDuplicateEvents := func(evs []fsnotify.Event) []fsnotify.Event {
+		seen := make(map[string]bool)
+		var n int
+		for _, ev := range evs {
+			if seen[ev.Name] {
+				continue
+			}
+			seen[ev.Name] = true
+			evs[n] = ev
+			n++
+		}
+		return evs[:n]
+	}
+
 	h, err := c.hugo()
 	if err != nil {
 		c.r.logger.Errorln("Error getting the Hugo object:", err)
@@ -743,6 +782,7 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 		istemp := strings.HasSuffix(ext, "~") ||
 			(ext == ".swp") || // vim
 			(ext == ".swx") || // vim
+			(ext == ".bck") || // helix
 			(ext == ".tmp") || // generic temp file
 			(ext == ".DS_Store") || // OSX Thumbnail
 			baseName == "4913" || // vim
@@ -811,6 +851,11 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 		}
 	}
 
+	lrl := c.r.logger.InfoCommand("livereload")
+
+	staticEvents = filterDuplicateEvents(staticEvents)
+	dynamicEvents = filterDuplicateEvents(dynamicEvents)
+
 	if len(staticEvents) > 0 {
 		c.printChangeDetected("Static files")
 
@@ -831,19 +876,20 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 		if c.s != nil && c.s.doLiveReload {
 			// Will block forever trying to write to a channel that nobody is reading if livereload isn't initialized
 
-			// force refresh when more than one file
 			if !c.errState.wasErr() && len(staticEvents) == 1 {
-				ev := staticEvents[0]
 				h, err := c.hugo()
 				if err != nil {
 					c.r.logger.Errorln("Error getting the Hugo object:", err)
 					return
 				}
-				path := h.BaseFs.SourceFilesystems.MakeStaticPathRelative(ev.Name)
+
+				path := h.BaseFs.SourceFilesystems.MakeStaticPathRelative(staticEvents[0].Name)
 				path = h.RelURL(paths.ToSlashTrimLeading(path), false)
 
+				lrl.Logf("refreshing static file %q", path)
 				livereload.RefreshPath(path)
 			} else {
+				lrl.Logf("got %d static file change events, force refresh", len(staticEvents))
 				livereload.ForceRefresh()
 			}
 		}
@@ -867,20 +913,34 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 		}()
 
 		if c.s != nil && c.s.doLiveReload {
-			if len(partitionedEvents.ContentEvents) == 0 && len(partitionedEvents.AssetEvents) > 0 {
-				if c.errState.wasErr() {
-					livereload.ForceRefresh()
-					return
+			if c.errState.wasErr() {
+				livereload.ForceRefresh()
+				return
+			}
+
+			changed := c.changeDetector.changed()
+			if c.changeDetector != nil {
+				if len(changed) >= 10 {
+					lrl.Logf("build changed %d files", len(changed))
+				} else {
+					lrl.Logf("build changed %d files: %q", len(changed), changed)
 				}
-				changed := c.changeDetector.changed()
-				if c.changeDetector != nil && len(changed) == 0 {
+				if len(changed) == 0 {
 					// Nothing has changed.
 					return
-				} else if len(changed) == 1 {
-					pathToRefresh := h.PathSpec.RelURL(paths.ToSlashTrimLeading(changed[0]), false)
-					livereload.RefreshPath(pathToRefresh)
+				}
+			}
+
+			// If this change set also contains one or more CSS files, we need to
+			// refresh these as well.
+			var cssChanges []string
+			var otherChanges []string
+
+			for _, ev := range changed {
+				if strings.HasSuffix(ev, ".css") {
+					cssChanges = append(cssChanges, ev)
 				} else {
-					livereload.ForceRefresh()
+					otherChanges = append(otherChanges, ev)
 				}
 			}
 
@@ -896,10 +956,35 @@ func (c *hugoBuilder) handleEvents(watcher *watcher.Batcher,
 					}
 				}
 
-				if p != nil {
-					livereload.NavigateToPathForPort(p.RelPermalink(), p.Site().ServerPort())
+				if p != nil && p.RelPermalink() != "" {
+					link, port := p.RelPermalink(), p.Site().ServerPort()
+					lrl.Logf("navigating to %q using port %d", link, port)
+					livereload.NavigateToPathForPort(link, port)
 				} else {
+					lrl.Logf("no page to navigate to, force refresh")
 					livereload.ForceRefresh()
+				}
+			} else if len(otherChanges) > 0 {
+				if len(otherChanges) == 1 {
+					// Allow single changes to be refreshed without a full page reload.
+					pathToRefresh := h.PathSpec.RelURL(paths.ToSlashTrimLeading(otherChanges[0]), false)
+					lrl.Logf("refreshing %q", pathToRefresh)
+					livereload.RefreshPath(pathToRefresh)
+				} else if len(cssChanges) == 0 || len(otherChanges) > 1 {
+					lrl.Logf("force refresh")
+					livereload.ForceRefresh()
+				}
+			}
+
+			if len(cssChanges) > 0 {
+				// Allow some time for the live reload script to get reconnected.
+				if len(otherChanges) > 0 {
+					time.Sleep(200 * time.Millisecond)
+				}
+				for _, ev := range cssChanges {
+					pathToRefresh := h.PathSpec.RelURL(paths.ToSlashTrimLeading(ev), false)
+					lrl.Logf("refreshing CSS %q", pathToRefresh)
+					livereload.RefreshPath(pathToRefresh)
 				}
 			}
 		}
@@ -969,7 +1054,7 @@ func (c *hugoBuilder) loadConfig(cd *simplecobra.Commandeer, running bool) error
 		"fastRenderMode": c.fastRenderMode,
 	})
 
-	conf, err := c.r.ConfigFromProvider(c.r.configVersionID.Load(), flagsToCfg(cd, cfg))
+	conf, err := c.r.ConfigFromProvider(configKey{counter: c.r.configVersionID.Load()}, flagsToCfg(cd, cfg))
 	if err != nil {
 		return err
 	}
@@ -1003,29 +1088,49 @@ func (c *hugoBuilder) printChangeDetected(typ string) {
 	c.r.logger.Println(htime.Now().Format(layout))
 }
 
-func (c *hugoBuilder) rebuildSites(events []fsnotify.Event) error {
+func (c *hugoBuilder) rebuildSites(events []fsnotify.Event) (err error) {
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
 	if err := c.errState.buildErr(); err != nil {
 		ferrs := herrors.UnwrapFileErrorsWithErrorContext(err)
 		for _, err := range ferrs {
 			events = append(events, fsnotify.Event{Name: err.Position().Filename, Op: fsnotify.Write})
 		}
 	}
-	c.errState.setBuildErr(nil)
-	h, err := c.hugo()
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
 	if err != nil {
-		return err
+		return
 	}
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: true, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()}, events...)
+	return
+}
 
-	return h.Build(hugolib.BuildCfg{NoBuildLock: true, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()}, events...)
+func (c *hugoBuilder) rebuildSitesForChanges(ids []identity.Identity) (err error) {
+	defer func() {
+		c.errState.setBuildErr(err)
+	}()
+
+	var h *hugolib.HugoSites
+	h, err = c.hugo()
+	if err != nil {
+		return
+	}
+	whatChanged := &hugolib.WhatChanged{}
+	whatChanged.Add(ids...)
+	err = h.Build(hugolib.BuildCfg{NoBuildLock: true, WhatChanged: whatChanged, RecentlyVisited: c.visitedURLs, ErrRecovery: c.errState.wasErr()})
+
+	return
 }
 
 func (c *hugoBuilder) reloadConfig() error {
-	c.r.Reset()
+	c.r.resetLogs()
 	c.r.configVersionID.Add(1)
 
 	if err := c.withConfE(func(conf *commonConfig) error {
 		oldConf := conf
-		newConf, err := c.r.ConfigFromConfig(c.r.configVersionID.Load(), conf)
+		newConf, err := c.r.ConfigFromConfig(configKey{counter: c.r.configVersionID.Load()}, conf)
 		if err != nil {
 			return err
 		}

@@ -102,3 +102,116 @@ suffixes = ["html", "xhtml"]
 	b.Assert(contentTypes.HTML.Suffixes(), qt.DeepEquals, []string{"html", "xhtml"})
 	b.Assert(contentTypes.Markdown.Suffixes(), qt.DeepEquals, []string{"md", "mdown", "markdown"})
 }
+
+func TestPaginationConfig(t *testing.T) {
+	files := `
+-- hugo.toml --
+ [languages.en]
+ weight = 1
+ [languages.en.pagination]
+ pagerSize = 20
+ [languages.de]
+ weight = 2
+ [languages.de.pagination]
+ path = "page-de"
+
+`
+
+	b := hugolib.Test(t, files)
+
+	confEn := b.H.Sites[0].Conf.Pagination()
+	confDe := b.H.Sites[1].Conf.Pagination()
+
+	b.Assert(confEn.Path, qt.Equals, "page")
+	b.Assert(confEn.PagerSize, qt.Equals, 20)
+	b.Assert(confDe.Path, qt.Equals, "page-de")
+	b.Assert(confDe.PagerSize, qt.Equals, 10)
+}
+
+func TestPaginationConfigDisableAliases(t *testing.T) {
+	files := `
+-- hugo.toml --
+disableKinds = ["taxonomy", "term"]
+[pagination]
+disableAliases = true
+pagerSize = 2
+-- layouts/_default/list.html --
+{{ $paginator := .Paginate  site.RegularPages }}
+{{ template "_internal/pagination.html" . }}
+{{ range $paginator.Pages }}
+  {{ .Title }}
+{{ end }}
+-- content/p1.md --
+---
+title: "p1"
+---
+-- content/p2.md --
+---
+title: "p2"
+---
+-- content/p3.md --
+---
+title: "p3"
+---
+`
+
+	b := hugolib.Test(t, files)
+
+	b.AssertFileExists("public/page/1/index.html", false)
+	b.AssertFileContent("public/page/2/index.html", "pagination-default")
+}
+
+func TestMapUglyURLs(t *testing.T) {
+	files := `
+-- hugo.toml --
+[uglyurls]
+  posts = true
+`
+
+	b := hugolib.Test(t, files)
+
+	c := b.H.Configs.Base
+
+	b.Assert(c.C.IsUglyURLSection("posts"), qt.IsTrue)
+	b.Assert(c.C.IsUglyURLSection("blog"), qt.IsFalse)
+}
+
+// Issue 13199
+func TestInvalidOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- hugo.toml --
+disableKinds = ['page','rss','section','sitemap','taxonomy','term']
+[outputs]
+home = ['html','foo']
+-- layouts/index.html --
+x
+`
+
+	b, err := hugolib.TestE(t, files)
+	b.Assert(err, qt.IsNotNil)
+	b.Assert(err.Error(), qt.Contains, `failed to create config: unknown output format "foo" for kind "home"`)
+}
+
+// Issue 13201
+func TestLanguageConfigSlice(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- hugo.toml --
+disableKinds = ['page','rss','section','sitemap','taxonomy','term']
+[languages.en]
+title = 'TITLE_EN'
+weight = 2
+[languages.de]
+title = 'TITLE_DE'
+weight = 1
+[languages.fr]
+title = 'TITLE_FR'
+weight = 3
+`
+
+	b := hugolib.Test(t, files)
+	b.Assert(b.H.Configs.LanguageConfigSlice[0].Title, qt.Equals, `TITLE_DE`)
+}

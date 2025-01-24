@@ -36,6 +36,20 @@ Use with the [`else`] statement:
 {{ end }}
 ```
 
+Use `else with` to check multiple conditions:
+
+```go-html-template
+{{ $v1 := 0 }}
+{{ $v2 := 42 }}
+{{ with $v1 }}
+  {{ . }}
+{{ else with $v2 }}
+  {{ . }} → 42
+{{ else }}
+  {{ print "v1 and v2 are falsy" }}
+{{ end }}
+```
+
 Initialize a variable, scoped to the current block:
 
 ```go-html-template
@@ -48,7 +62,7 @@ Initialize a variable, scoped to the current block:
 
 ## Understanding context
 
-At the top of a page template, the [context] (the dot) is a `Page` object. Inside of the `with` block, the context is bound to the value passed to the `with` statement.
+At the top of a page template, the [context](g) (the dot) is a `Page` object. Inside of the `with` block, the context is bound to the value passed to the `with` statement.
 
 With this contrived example:
 
@@ -80,8 +94,6 @@ This template will render the page title as desired:
 Gaining a thorough understanding of context is critical for anyone writing template code.
 {{% /note %}}
 
-[context]: /getting-started/glossary/#context
-
 {{% include "functions/go-template/_common/text-template.md" %}}
 
-[`else`]: /functions/go-template/else
+[`else`]: /functions/go-template/else/

@@ -17,15 +17,16 @@ With this front matter:
 {{< code-toggle file=content/news/annual-conference.md >}}
 title = 'Annual conference'
 date = 2023-10-17T15:11:37-07:00
+[params]
 display_related = true
-[author]
+[params.author]
   email = 'jsmith@example.org'
   name = 'John Smith'
 {{< /code-toggle >}}
 
 The `title` and `date` fields are standard parameters---the other fields are user-defined.
 
-Access the custom parameters by [chaining] the [identifiers]:
+Access the custom parameters by [chaining](g) the [identifiers](g):
 
 ```go-html-template
 {{ .Params.display_related }} → true
@@ -38,6 +39,4 @@ In the template example above, each of the keys is a valid identifier. For examp
 {{ index .Params "key-with-hyphens" }} → 2023
 ```
 
-[`index`]: /functions/collections/indexfunction
-[chaining]: /getting-started/glossary/#chain
-[identifiers]: /getting-started/glossary/#identifier
+[`index`]: /functions/collections/indexfunction/

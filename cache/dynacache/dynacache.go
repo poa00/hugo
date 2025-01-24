@@ -38,6 +38,11 @@ import (
 
 const minMaxSize = 10
 
+type KeyIdentity struct {
+	Key      any
+	Identity identity.Identity
+}
+
 // New creates a new cache.
 func New(opts Options) *Cache {
 	if opts.CheckInterval == 0 {
@@ -64,14 +69,14 @@ func New(opts Options) *Cache {
 
 	infol := opts.Log.InfoCommand("dynacache")
 
-	evictedIdentities := collections.NewStack[identity.Identity]()
+	evictedIdentities := collections.NewStack[KeyIdentity]()
 
 	onEvict := func(k, v any) {
 		if !opts.Watching {
 			return
 		}
 		identity.WalkIdentitiesShallow(v, func(level int, id identity.Identity) bool {
-			evictedIdentities.Push(id)
+			evictedIdentities.Push(KeyIdentity{Key: k, Identity: id})
 			return false
 		})
 		resource.MarkStale(v)
@@ -124,7 +129,7 @@ type Cache struct {
 	partitions map[string]PartitionManager
 
 	onEvict           func(k, v any)
-	evictedIdentities *collections.Stack[identity.Identity]
+	evictedIdentities *collections.Stack[KeyIdentity]
 
 	opts  Options
 	infol logg.LevelLogger
@@ -135,8 +140,13 @@ type Cache struct {
 }
 
 // DrainEvictedIdentities drains the evicted identities from the cache.
-func (c *Cache) DrainEvictedIdentities() []identity.Identity {
+func (c *Cache) DrainEvictedIdentities() []KeyIdentity {
 	return c.evictedIdentities.Drain()
+}
+
+// DrainEvictedIdentitiesMatching drains the evicted identities from the cache that match the given predicate.
+func (c *Cache) DrainEvictedIdentitiesMatching(predicate func(KeyIdentity) bool) []KeyIdentity {
+	return c.evictedIdentities.DrainMatching(predicate)
 }
 
 // ClearMatching clears all partition for which the predicate returns true.
@@ -420,12 +430,25 @@ func (p *Partition[K, V]) doGetOrCreateWitTimeout(key K, duration time.Duration,
 	errch := make(chan error, 1)
 
 	go func() {
-		v, _, err := p.c.GetOrCreate(key, create)
-		if err != nil {
-			errch <- err
-			return
-		}
-		resultch <- v
+		var (
+			v   V
+			err error
+		)
+		defer func() {
+			if r := recover(); r != nil {
+				if rerr, ok := r.(error); ok {
+					err = rerr
+				} else {
+					err = fmt.Errorf("panic: %v", r)
+				}
+			}
+			if err != nil {
+				errch <- err
+			} else {
+				resultch <- v
+			}
+		}()
+		v, _, err = p.c.GetOrCreate(key, create)
 	}()
 
 	select {

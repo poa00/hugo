@@ -32,7 +32,6 @@ There are 86400 seconds in one day.
 
 The time unit must be one of the following:
 
-
 Duration|Valid time units
 :--|:--
 hours|`hour`, `h`
@@ -43,4 +42,4 @@ microseconds|`microsecond`, `us`, `µs`
 nanoseconds|`nanosecond`, `ns`
 
 [`time.Duration`]: https://pkg.go.dev/time#Duration
-[methods]: /methods/duration
+[methods]: /methods/duration/

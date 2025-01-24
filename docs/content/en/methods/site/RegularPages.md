@@ -12,6 +12,8 @@ action:
   signatures: [SITE.RegularPages]
 ---
 
+The `RegularPages` method on a `Site` object returns a collection of all [regular pages](g).
+
 ```go-html-template
 {{ range .Site.RegularPages }}
   <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>

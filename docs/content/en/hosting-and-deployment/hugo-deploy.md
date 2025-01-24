@@ -1,6 +1,6 @@
 ---
 title: Hugo Deploy
-description: Upload your site to GCS, S3, or Azure
+description: Deploy your site directly to a Google Cloud Storage bucket, an AWS S3 bucket, or an Azure Storage container.
 categories: [hosting and deployment]
 keywords: [deployment,s3,gcs,azure]
 menu:
@@ -11,8 +11,13 @@ weight: 20
 toc: true
 ---
 
-You can use the "hugo deploy" command to upload your site directly to a Google Cloud Storage (GCS) bucket, an AWS S3 bucket, and/or an Azure Storage container.
+Use the `hugo deploy` command to deploy your site directly to a Google Cloud Storage bucket, an AWS S3 bucket, or an Azure Storage container
 
+{{% note %}}
+This feature requires the Hugo extended/deploy edition. See the [installation] section for details.
+
+[installation]: /installation/
+{{% /note %}}
 
 ## Assumptions
 
@@ -28,7 +33,6 @@ You can use the "hugo deploy" command to upload your site directly to a Google C
   * Google Cloud: [create a bucket](https://cloud.google.com/storage/docs/creating-buckets) and [host a static website](https://cloud.google.com/storage/docs/hosting-static-website)
   * Amazon S3: [create a bucket](https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html) and [host a static website](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html)
   * Microsoft Azure: [create a storage container](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-portal) and [host a static website](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-static-website)
-
 
 ## Configuring your first deployment
 
@@ -50,8 +54,10 @@ URL = "<FILL ME IN>"
 #URL = "gs://<Bucket Name>"
 
 # Amazon Web Services S3; see https://gocloud.dev/howto/blob/#s3
-# For S3-compatible endpoints, see https://gocloud.dev/howto/blob/#s3-compatible
 #URL = "s3://<Bucket Name>?region=<AWS region>"
+
+# For S3-compatible endpoints, see https://gocloud.dev/howto/blob/#s3-compatible
+#URL = "s3://<Bucket Name>?endpoint=https://my.minio.instance&awssdk=v2&use_path_style=true&disable_https=false
 
 # Microsoft Azure Blob Storage; see https://gocloud.dev/howto/blob/#azure
 #URL = "azblob://$web"
@@ -75,7 +81,6 @@ configuration.
 
 See `hugo help deploy` or [the deploy command-line documentation][commandline] for more command-line options.
 
-
 ### How the file list works
 
 The first thing `hugo deploy` does is create file lists for local and remote by
@@ -88,7 +93,6 @@ the [deployment target's configuration][config] --
 * If the configuration specifies an `exclude` pattern, files matching the
   pattern are skipped.
 
-
 {{% note %}}
 When creating the local file list, a few additional skips apply: first, Hugo always
 skips files named `.DS_Store`. 
@@ -99,8 +103,6 @@ traverse into them, except for the special [hidden directory named
 `.well-known`](https://en.wikipedia.org/wiki/Well-known_URI), which is
 traversed if it exists.
 {{% /note %}}
-
-
 
 ### How the local and remote file lists are compared
 
@@ -168,8 +170,8 @@ URL = "<FILL ME IN>"
 # Azure Blob Storage; see https://gocloud.dev/howto/blob/#azure
 #URL = "azblob://$web"
 
-# You can use a "prefix=" query parameter to target a subfolder of the bucket:
-#URL = "gs://<Bucket Name>?prefix=a/subfolder/"
+# You can use a "prefix=" query parameter to target a subdirectory of the bucket:
+#URL = "gs://<Bucket Name>?prefix=a/subdirectory/"
 
 # If you are using a CloudFront CDN, deploy will invalidate the cache as needed.
 #cloudFrontDistributionID = "<FILL ME IN>"
@@ -186,6 +188,15 @@ URL = "<FILL ME IN>"
 #include = "**.html" # would only include files with ".html" suffix
 #exclude = "**.{jpg, png}" # would exclude files with ".jpg" or ".png" suffix
 
+# Map any file named "<dir>/index.html" to the remote file "<dir>/". This does
+# not affect the root "index.html" file, and it does not affect matchers below.
+# This works when deploying to key-value cloud storage systems, such as Amazon
+# S3 (general purpose buckets, not directory buckets), Google Cloud Storage, and
+# Azure Blob Storage. This makes it so the canonical URL will match the object
+# key in cloud storage, except for the root index.html file.
+#
+#stripIndexHTML = true
+
 
 #######################
 [[deployment.matchers]] 
@@ -195,6 +206,7 @@ URL = "<FILL ME IN>"
 
 # See https://golang.org/pkg/regexp/syntax/ for pattern syntax.
 # Pattern searching is stopped on first match.
+# This is not affected by stripIndexHTML, above.
 pattern = "<FILL ME IN>"
 
 # If true, Hugo will gzip the file before uploading it to the bucket.

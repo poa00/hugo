@@ -1,6 +1,7 @@
 ---
 title: Key
 description: Returns the unique key for the given resource, equivalent to its publishing path.
+draft: true
 categories: []
 keywords: []
 action:
@@ -37,9 +38,8 @@ We used the [`resources.Copy`] function to change the publishing path. The `Key`
 
 The `Key` method is useful if you need to get the resource's publishing path without publishing the resource. Unlike the `Permalink`, `RelPermalink`, or `Publish` methods, calling `Key` will not publish the resource.
 
-
 {{% include "methods/resource/_common/global-page-remote-resources.md" %}}
 
-[`Permalink`]: /methods/resource/permalink
-[`RelPermalink`]: /methods/resource/relpermalink
-[`resources.Copy`]: /functions/resources/copy
+[`Permalink`]: /methods/resource/permalink/
+[`RelPermalink`]: /methods/resource/relpermalink/
+[`resources.Copy`]: /functions/resources/copy/

@@ -15,6 +15,8 @@ action:
 toc: true
 ---
 
+{{< new-in 0.123.0 >}}
+
 ## Options
 
 colors
@@ -29,7 +31,7 @@ serpentine
 : (`bool`) Applicable to error diffusion dithering methods, serpentine controls whether the error diffusion matrix is applied in a serpentine manner, meaning that it goes right-to-left every other line. This greatly reduces line-type artifacts. Default is `true`.
 
 strength
-: (`float`) The strength at which to apply the dithering matrix, typically a value in the range [0, 1]. A value of `1.0` applies the dithering matrix at 100% strength (no modifification of the dither matrix). The `strength` is inversely proportional to contrast; reducing the strength increases the contrast. Setting `strength` to a value such as `0.8` can be useful to reduce noise in the dithered image. Default is `1.0`.
+: (`float`) The strength at which to apply the dithering matrix, typically a value in the range [0, 1]. A value of `1.0` applies the dithering matrix at 100% strength (no modification of the dither matrix). The `strength` is inversely proportional to contrast; reducing the strength increases the contrast. Setting `strength` to a value such as `0.8` can be useful to reduce noise in the dithered image. Default is `1.0`.
 
 ## Usage
 
@@ -115,10 +117,9 @@ This example uses the default dithering options.
 Regardless of dithering method, do both of the following to obtain the best results:
 
 1. Scale the image _before_ dithering
-2. Output the image to a lossless format such as GIF or PNG
+1. Output the image to a lossless format such as GIF or PNG
 
 The example below does both of these, and it sets the dithering palette to the three most dominant colors in the image.
-
 
 ```go-html-template
 {{ with resources.Get "original.jpg" }}
@@ -155,6 +156,6 @@ For best results, if the dithering palette is grayscale, convert the image to gr
 The example above:
 
 1. Resizes the image to be 800 px wide
-2. Converts the image to grayscale
-3. Dithers the image using the default (`FloydSteinberg`) dithering method with a grayscale palette
-4. Converts the image to the PNG format
+1. Converts the image to grayscale
+1. Dithers the image using the default (`FloydSteinberg`) dithering method with a grayscale palette
+1. Converts the image to the PNG format

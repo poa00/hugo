@@ -13,14 +13,14 @@ action:
 
 The `Data` method on a resource returned by the [`resources.GetRemote`] function returns information from the HTTP response.
 
-[`resources.GetRemote`]: functions/resources/getremote
+[`resources.GetRemote`]: /functions/resources/getremote/
 
 ```go-html-template
 {{ $url := "https://example.org/images/a.jpg" }}
-{{ with resources.GetRemote $url }}
+{{ with try (resources.GetRemote $url) }}
   {{ with .Err }}
     {{ errorf "%s" . }}
-  {{ else }}
+  {{ else with .Value }}
     {{ with .Data }}
       {{ .ContentLength }} → 42764
       {{ .ContentType }} → image/jpeg
@@ -28,9 +28,9 @@ The `Data` method on a resource returned by the [`resources.GetRemote`] function
       {{ .StatusCode }} → 200
       {{ .TransferEncoding }} → []
     {{ end }}
+  {{ else }}
+    {{ errorf "Unable to get remote resource %q" $url }}
   {{ end }}
-{{ else }}
-  {{ errorf "Unable to get remote resource %q" $url }}
 {{ end }}
 ```
 
@@ -49,5 +49,4 @@ StatusCode
 TransferEncoding
 : (`string`) The transfer encoding.
 
-
-[`resources.GetRemote`]: functions/resources/getremote
+[`resources.GetRemote`]: /functions/resources/getremote/

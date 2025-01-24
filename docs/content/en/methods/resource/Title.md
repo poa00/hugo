@@ -15,81 +15,69 @@ The value returned by the `Title` method on a `Resource` object depends on the r
 
 ## Global resource
 
-With a [global resource], the `Title` method returns the path to the resource, relative to the assets directory.
+With a [global resource](g), the `Title` method returns the path to the resource, relative to the `assets` directory.
 
 ```text
 assets/
 └── images/
-    └── a.jpg
+    └── Sunrise in Bryce Canyon.jpg
 ```
 
 ```go-html-template
-{{ with resources.Get "images/a.jpg" }}
-  {{ .Title }} → images/a.jpg
+{{ with resources.Get "images/Sunrise in Bryce Canyon.jpg" }}
+  {{ .Title }} → /images/Sunrise in Bryce Canyon.jpg
 {{ end }}
 ```
 
 ## Page resource
 
-With a [page resource], the `Title` method returns the path to the resource, relative to the page bundle.
+With a [page resource](g), if you create an element in the `resources` array in front matter, the `Title` method returns the value of the `title` parameter.
 
 ```text
 content/
-├── posts/
-│   ├── post-1/
-│   │   ├── images/
-│   │   │   └── a.jpg
-│   │   └── index.md
-│   └── _index.md
+├── example/
+│   ├── images/
+│   │   └── a.jpg
+│   └── index.md
 └── _index.md
 ```
 
-```go-html-template
-{{ with .Resources.Get "images/a.jpg" }}
-  {{ .Title }} → images/a.jpg
-{{ end }}
-```
-
-If you create an element in the `resources` array in front matter, the `Title` method returns the value of the `title` parameter:
-
-{{< code-toggle file=content/posts/post-1.md fm=true >}}
-title = 'Post 1'
+{{< code-toggle file=content/example/index.md fm=true >}}
+title = 'Example'
 [[resources]]
 src = 'images/a.jpg'
-name = 'cat'
-title = 'Felix the cat'
-[resources.params]
-temperament = 'malicious'
+title = 'A beautiful sunrise in Bryce Canyon'
 {{< /code-toggle >}}
 
 ```go-html-template
-{{ with .Resources.Get "cat" }}
-  {{ .Title }} →  Felix the cat
+{{ with .Resources.Get "images/a.jpg" }}
+  {{ .Title }} → A beautiful sunrise in Bryce Canyon
 {{ end }}
 ```
 
-If the page resource is a content file, the `Title` methods return the `title` field as defined in front matter.
+If you do not create an element in the `resources` array in front matter, the `Title` method returns the file path, relative to the page bundle.
 
 ```text
 content/
-├── lessons/
-│   ├── lesson-1/
-│   │   ├── _objectives.md  <-- resource type = page
-│   │   └── index.md
-│   └── _index.md
+├── example/
+│   ├── images/
+│   │   └── Sunrise in Bryce Canyon.jpg
+│   └── index.md
 └── _index.md
+```
+
+```go-html-template
+{{ with .Resources.Get "Sunrise in Bryce Canyon.jpg" }}
+  {{ .Title }} → images/Sunrise in Bryce Canyon.jpg
+{{ end }}
 ```
 
 ## Remote resource
 
-With a [remote resource], the `Title` method returns a hashed file name.
+With a [remote resource](g), the `Title` method returns a hashed file name.
 
 ```go-html-template
 {{ with resources.GetRemote "https://example.org/images/a.jpg" }}
-  {{ .Title }} → a_18432433023265451104.jpg
+  {{ .Title }} → /a_18432433023265451104.jpg
 {{ end }}
 ```
-
-[global resource]: /getting-started/glossary/#global-resource
-[page resource]: /getting-started/glossary/#page-resource
-[remote resource]: /getting-started/glossary/#remote-resource

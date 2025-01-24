@@ -11,11 +11,13 @@ func TestMultihost(t *testing.T) {
 
 	files := `
 -- hugo.toml --
-paginate = 1
 defaultContentLanguage = "fr"
 defaultContentLanguageInSubdir = false
 staticDir = ["s1", "s2"]
 enableRobotsTXT = true
+
+[pagination]
+pagerSize = 1
 
 [permalinks]
 other = "/somewhere/else/:filename"
@@ -203,9 +205,9 @@ title: mybundle-en
 	b.AssertFileExists("public/de/mybundle/pixel.png", true)
 	b.AssertFileExists("public/en/mybundle/pixel.png", true)
 
-	b.AssertFileExists("public/de/mybundle/pixel_hu8aa3346827e49d756ff4e630147c42b5_70_2x2_resize_box_3.png", true)
+	b.AssertFileExists("public/de/mybundle/pixel_hu_58204cbc58507d74.png", true)
 	// failing test below
-	b.AssertFileExists("public/en/mybundle/pixel_hu8aa3346827e49d756ff4e630147c42b5_70_2x2_resize_box_3.png", true)
+	b.AssertFileExists("public/en/mybundle/pixel_hu_58204cbc58507d74.png", true)
 }
 
 func TestMultihostResourceOneBaseURLWithSuPath(t *testing.T) {

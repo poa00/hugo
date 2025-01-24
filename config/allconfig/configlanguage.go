@@ -137,11 +137,11 @@ func (c ConfigLanguage) Watching() bool {
 	return c.m.Base.Internal.Watch
 }
 
-func (c ConfigLanguage) NewIdentityManager(name string) identity.Manager {
+func (c ConfigLanguage) NewIdentityManager(name string, opts ...identity.ManagerOption) identity.Manager {
 	if !c.Watching() {
 		return identity.NopManager
 	}
-	return identity.NewManager(name)
+	return identity.NewManager(name, opts...)
 }
 
 func (c ConfigLanguage) ContentTypes() config.ContentTypesProvider {
@@ -173,6 +173,8 @@ func (c ConfigLanguage) GetConfigSection(s string) any {
 		return c.m.Modules
 	case "deployment":
 		return c.config.Deployment
+	case "httpCacheCompiled":
+		return c.config.C.HTTPCache
 	default:
 		panic("not implemented: " + s)
 	}
@@ -246,12 +248,8 @@ func (c ConfigLanguage) CreateTitle(s string) string {
 	return c.config.C.CreateTitle(s)
 }
 
-func (c ConfigLanguage) Paginate() int {
-	return c.config.Paginate
-}
-
-func (c ConfigLanguage) PaginatePath() string {
-	return c.config.PaginatePath
+func (c ConfigLanguage) Pagination() config.Pagination {
+	return c.config.Pagination
 }
 
 func (c ConfigLanguage) StaticDirs() []string {

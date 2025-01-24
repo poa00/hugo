@@ -24,10 +24,9 @@ aliases: [/methods/time/format]
 ```
 
 {{% note %}}
-To [localize] the return value, use the [`time.Format`] function instead.
+To [localize](g) the return value, use the [`time.Format`] function instead.
 
-[localize]: /getting-started/glossary/#localization
-[`time.Format`]: /functions/time/format
+[`time.Format`]: /functions/time/format/
 {{% /note %}}
 
 Use the `Format` method with any `time.Time` value, including the four predefined front matter dates:
@@ -44,7 +43,7 @@ Use the `Format` method with any `time.Time` value, including the four predefine
 {{% note %}}
 Use the [`time.Format`] function to format string representations of dates, and to format raw TOML dates that exclude time and time zone offset.
 
-[`time.Format`]: /functions/time/format
+[`time.Format`]: /functions/time/format/
 {{% /note %}}
 
 ## Layout string

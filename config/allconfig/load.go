@@ -64,7 +64,7 @@ func LoadConfig(d ConfigSourceDescriptor) (*Configs, error) {
 		return nil, fmt.Errorf("failed to create config from result: %w", err)
 	}
 
-	moduleConfig, modulesClient, err := l.loadModules(configs)
+	moduleConfig, modulesClient, err := l.loadModules(configs, d.IgnoreModuleDoesNotExist)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load modules: %w", err)
 	}
@@ -116,6 +116,9 @@ type ConfigSourceDescriptor struct {
 
 	// Defaults to os.Environ if not set.
 	Environ []string
+
+	// If set, this will be used to ignore the module does not exist error.
+	IgnoreModuleDoesNotExist bool
 }
 
 func (d ConfigSourceDescriptor) configFilenames() []string {
@@ -194,8 +197,8 @@ func (l configLoader) applyDefaultConfig() error {
 		"footnoteAnchorPrefix":                 "",
 		"footnoteReturnLinkContents":           "",
 		"newContentEditor":                     "",
-		"paginate":                             10,
-		"paginatePath":                         "page",
+		"paginate":                             0,  // Moved into the paginator struct in Hugo v0.128.0.
+		"paginatePath":                         "", // Moved into the paginator struct in Hugo v0.128.0.
 		"summaryLength":                        70,
 		"rssLimit":                             -1,
 		"sectionPagesMenu":                     "",
@@ -453,11 +456,12 @@ func (l *configLoader) loadConfigMain(d ConfigSourceDescriptor) (config.LoadConf
 	return res, l.ModulesConfig, err
 }
 
-func (l *configLoader) loadModules(configs *Configs) (modules.ModulesConfig, *modules.Client, error) {
+func (l *configLoader) loadModules(configs *Configs, ignoreModuleDoesNotExist bool) (modules.ModulesConfig, *modules.Client, error) {
 	bcfg := configs.LoadingInfo.BaseConfig
 	conf := configs.Base
 	workingDir := bcfg.WorkingDir
 	themesDir := bcfg.ThemesDir
+	publishDir := bcfg.PublishDir
 
 	cfg := configs.LoadingInfo.Cfg
 
@@ -466,7 +470,7 @@ func (l *configLoader) loadModules(configs *Configs) (modules.ModulesConfig, *mo
 		ignoreVendor, _ = hglob.GetGlob(hglob.NormalizePath(s))
 	}
 
-	ex := hexec.New(conf.Security)
+	ex := hexec.New(conf.Security, workingDir, l.Logger)
 
 	hook := func(m *modules.ModulesConfig) error {
 		for _, tc := range m.AllModules {
@@ -486,16 +490,18 @@ func (l *configLoader) loadModules(configs *Configs) (modules.ModulesConfig, *mo
 	}
 
 	modulesClient := modules.NewClient(modules.ClientConfig{
-		Fs:                 l.Fs,
-		Logger:             l.Logger,
-		Exec:               ex,
-		HookBeforeFinalize: hook,
-		WorkingDir:         workingDir,
-		ThemesDir:          themesDir,
-		Environment:        l.Environment,
-		CacheDir:           conf.Caches.CacheDirModules(),
-		ModuleConfig:       conf.Module,
-		IgnoreVendor:       ignoreVendor,
+		Fs:                       l.Fs,
+		Logger:                   l.Logger,
+		Exec:                     ex,
+		HookBeforeFinalize:       hook,
+		WorkingDir:               workingDir,
+		ThemesDir:                themesDir,
+		PublishDir:               publishDir,
+		Environment:              l.Environment,
+		CacheDir:                 conf.Caches.CacheDirModules(),
+		ModuleConfig:             conf.Module,
+		IgnoreVendor:             ignoreVendor,
+		IgnoreModuleDoesNotExist: ignoreModuleDoesNotExist,
 	})
 
 	moduleConfig, err := modulesClient.Collect()

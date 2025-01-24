@@ -80,6 +80,7 @@ Pfile Content
 {{ $.AddPage  (dict "kind" "page" "path" "p2" "title" "p2title" "dates" $dates "content" $contentHTML ) }}
 {{ $.AddPage  (dict "kind" "page" "path" "p3" "title" "p3title" "dates" $dates "content" $contentMarkdownDefault "draft" false ) }}
 {{ $.AddPage  (dict "kind" "page" "path" "p4" "title" "p4title" "dates" $dates "content" $contentMarkdownDefault "draft" $data.draft ) }}
+ADD_MORE_PLACEHOLDER
 
 
 {{ $resourceContent := dict "value" $dataResource }}
@@ -118,7 +119,7 @@ docs/p1/sub/mymixcasetext2.txt
 		"RelPermalink: /docs/p1/sub/mymixcasetext2.txt|Name: sub/mymixcasetext2.txt|",
 		"RelPermalink: /mydata.yaml|Name: sub/data1.yaml|Title: Sub data|Params: map[]|",
 		"Featured Image: /a/pixel.png|featured.png|",
-		"Resized Featured Image: /a/pixel_hu8aa3346827e49d756ff4e630147c42b5_70_10x10_resize_box_3.png|10|",
+		"Resized Featured Image: /a/pixel_hu_a32b3e361d55df1.png|10|",
 		// Resource from string
 		"RelPermalink: /docs/p1/mytext.txt|Name: textresource|Title: My Text Resource|Params: map[param1:param1v]|",
 		// Dates
@@ -277,6 +278,14 @@ func TestPagesFromGoTmplRemovePage(t *testing.T) {
 	b := hugolib.TestRunning(t, filesPagesFromDataTempleBasic)
 	b.EditFileReplaceAll("content/docs/_content.gotmpl", `{{ $.AddPage  (dict "kind" "page" "path" "p2" "title" "p2title" "dates" $dates "content" $contentHTML ) }}`, "").Build()
 	b.AssertFileContent("public/index.html", "RegularPagesRecursive: p1:p1:/docs/p1|p3title:/docs/p3|p4title:/docs/p4|pfile:/docs/pfile|$")
+}
+
+func TestPagesFromGoTmplAddPage(t *testing.T) {
+	t.Parallel()
+	b := hugolib.TestRunning(t, filesPagesFromDataTempleBasic)
+	b.EditFileReplaceAll("content/docs/_content.gotmpl", "ADD_MORE_PLACEHOLDER", `{{ $.AddPage  (dict "kind" "page" "path" "page_added" "title" "page_added_title" "dates" $dates "content" $contentHTML ) }}`).Build()
+	b.AssertFileExists("public/docs/page_added/index.html", true)
+	b.AssertFileContent("public/index.html", "RegularPagesRecursive: p1:p1:/docs/p1|p2title:/docs/p2|p3title:/docs/p3|p4title:/docs/p4|page_added_title:/docs/page_added|pfile:/docs/pfile|$")
 }
 
 func TestPagesFromGoTmplDraftPage(t *testing.T) {
@@ -553,7 +562,7 @@ title: "p1"
 
 	b = hugolib.Test(t, files, hugolib.TestOptWarn())
 
-	b.AssertLogNotContains("WARN")
+	b.AssertLogContains("! WARN")
 }
 
 func TestPagesFromGoTmplPathWarningsPathResource(t *testing.T) {
@@ -588,7 +597,7 @@ value: data1
 
 	b = hugolib.Test(t, files, hugolib.TestOptWarn())
 
-	b.AssertLogNotContains("WARN")
+	b.AssertLogContains("! WARN")
 }
 
 func TestPagesFromGoTmplShortcodeNoPreceddingCharacterIssue12544(t *testing.T) {
@@ -668,4 +677,34 @@ summary: {{ .Summary }}|content: {{ .Content}}
 	b.AssertFileContent("public/s1/p1/index.html",
 		"<p>aaa</p>|content: <p>aaa</p>\n<p>bbb</p>",
 	)
+}
+
+// Issue 13063.
+func TestPagesFromGoTmplTermIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	files := `
+-- hugo.toml --
+baseURL = "https://example.com"
+disableKinds = ['section', 'home', 'rss','sitemap']
+printPathWarnings = true
+[taxonomies]
+tag = "tags"
+-- content/mypost.md --
+---
+title: "My Post"
+tags: ["mytag"]
+---
+-- content/tags/_content.gotmpl --
+{{ .AddPage (dict "path" "mothertag" "title" "My title" "kind" "term") }}
+--
+-- layouts/_default/taxonomy.html --
+Terms: {{ range .Data.Terms.ByCount }}{{ .Name }}: {{ .Count }}|{{ end }}§s
+-- layouts/_default/single.html --
+Single.
+`
+
+	b := hugolib.Test(t, files, hugolib.TestOptWarn())
+
+	b.AssertFileContent("public/tags/index.html", "Terms: mytag: 1|§s")
 }

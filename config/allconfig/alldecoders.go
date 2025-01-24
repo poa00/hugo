@@ -18,6 +18,8 @@ import (
 	"strings"
 
 	"github.com/gohugoio/hugo/cache/filecache"
+
+	"github.com/gohugoio/hugo/cache/httpcache"
 	"github.com/gohugoio/hugo/common/maps"
 	"github.com/gohugoio/hugo/common/types"
 	"github.com/gohugoio/hugo/config"
@@ -92,6 +94,18 @@ var allDecoderSetups = map[string]decodeWeight{
 					cache.MaxAge = 0
 					p.c.Caches[k] = cache
 				}
+			}
+			return err
+		},
+	},
+	"httpcache": {
+		key: "httpcache",
+		decode: func(d decodeWeight, p decodeConfig) error {
+			var err error
+			p.c.HTTPCache, err = httpcache.DecodeConfig(p.bcfg, p.p.GetStringMap(d.key))
+			if p.c.IgnoreCache {
+				p.c.HTTPCache.Cache.For.Excludes = []string{"**"}
+				p.c.HTTPCache.Cache.For.Includes = []string{}
 			}
 			return err
 		},
@@ -313,6 +327,41 @@ var allDecoderSetups = map[string]decodeWeight{
 			return err
 		},
 	},
+	"page": {
+		key: "page",
+		decode: func(d decodeWeight, p decodeConfig) error {
+			p.c.Page = config.PageConfig{
+				NextPrevSortOrder:          "desc",
+				NextPrevInSectionSortOrder: "desc",
+			}
+			if p.p.IsSet(d.key) {
+				if err := mapstructure.WeakDecode(p.p.Get(d.key), &p.c.Page); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+		getCompiler: func(c *Config) configCompiler {
+			return &c.Page
+		},
+	},
+	"pagination": {
+		key: "pagination",
+		decode: func(d decodeWeight, p decodeConfig) error {
+			p.c.Pagination = config.Pagination{
+				PagerSize: 10,
+				Path:      "page",
+			}
+			if p.p.IsSet(d.key) {
+				if err := mapstructure.WeakDecode(p.p.Get(d.key), &p.c.Pagination); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+	},
 	"privacy": {
 		key: "privacy",
 		decode: func(d decodeWeight, p decodeConfig) error {
@@ -370,6 +419,8 @@ var allDecoderSetups = map[string]decodeWeight{
 				p.c.UglyURLs = vv
 			case string:
 				p.c.UglyURLs = vv == "true"
+			case maps.Params:
+				p.c.UglyURLs = cast.ToStringMapBool(maps.CleanConfigStringMap(vv))
 			default:
 				p.c.UglyURLs = cast.ToStringMapBool(v)
 			}

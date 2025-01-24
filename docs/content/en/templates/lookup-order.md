@@ -1,13 +1,14 @@
 ---
 title: Template lookup order
+linkTitle: Lookup order
 description: Hugo uses the rules below to select a template for a given page, starting from the most specific.
 categories: [templates,fundamentals]
-keywords: [templates]
+keywords: []
 menu:
   docs:
     parent: templates
-    weight: 30
-weight: 30
+    weight: 40
+weight: 40
 toc: true
 ---
 
@@ -36,7 +37,7 @@ Section
 : Is relevant for `section`, `taxonomy` and `term` types.
 
 {{% note %}}
-Templates can live in either the project's or the themes' layout folders, and the most specific templates will be chosen. Hugo will interleave the lookups listed below, finding the most specific one either in the project or themes.
+Templates can live in either the project's or the themes' `layout` directories, and the most specific templates will be chosen. Hugo will interleave the lookups listed below, finding the most specific one either in the project or themes.
 {{% /note %}}
 
 ## Target a template
@@ -51,9 +52,7 @@ content/
 └── contact.md
 ```
 
-Files in the root of the content directory have a [content type] of `page`. To render these pages with a unique template, create a matching subdirectory:
-
-[content type]: /getting-started/glossary/#content-type
+Files in the root of the `content` directory have a [content type](g) of `page`. To render these pages with a unique template, create a matching subdirectory:
 
 ```text
 layouts/
@@ -99,23 +98,29 @@ layouts/
     └── single.html   <-- renders about.md
 ```
 
-## Home page
+## Home templates
+
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
 
 {{< datatable-filtered "output" "layouts" "Kind == home" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}
 
-## Single pages
+## Single templates
+
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
 
 {{< datatable-filtered "output" "layouts" "Kind == page" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}
 
-## Section pages
+## Section templates
 
-A section page is a list of pages within a given section.
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
 
 {{< datatable-filtered "output" "layouts" "Kind == section" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}
 
-## Taxonomy pages
+## Taxonomy templates
 
-A taxonomy page is a list of terms within a given taxonomy. The examples below assume the following site configuration:
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
+
+The examples below assume the following site configuration:
 
 {{< code-toggle file=hugo >}}
 [taxonomies]
@@ -124,9 +129,11 @@ category = 'categories'
 
 {{< datatable-filtered "output" "layouts" "Kind == taxonomy" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}
 
-## Term pages
+## Term templates
 
-A term page is a list of pages associated with a given term. The examples below assume the following site configuration:
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
+
+The examples below assume the following site configuration:
 
 {{< code-toggle file=hugo >}}
 [taxonomies]
@@ -134,3 +141,16 @@ category = 'categories'
 {{< /code-toggle >}}
 
 {{< datatable-filtered "output" "layouts" "Kind == term" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}
+
+## RSS templates
+
+These template paths are sorted by specificity in descending order. The least specific path is at the bottom of each list.
+
+The examples below assume the following site configuration:
+
+{{< code-toggle file=hugo >}}
+[taxonomies]
+category = 'categories'
+{{< /code-toggle >}}
+
+{{< datatable-filtered "output" "layouts" "OutputFormat == rss" "Example" "OutputFormat" "Suffix" "Template Lookup Order" >}}

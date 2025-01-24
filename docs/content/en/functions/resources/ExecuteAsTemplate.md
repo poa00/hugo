@@ -15,9 +15,9 @@ The `resources.ExecuteAsTemplate` function returns a resource created from a Go 
 
 Hugo publishes the resource to the target path when you call its [`Publish`], [`Permalink`], or [`RelPermalink`] methods.
 
-[`publish`]: /methods/resource/publish
-[`permalink`]: /methods/resource/permalink
-[`relpermalink`]: /methods/resource/relpermalink
+[`publish`]: /methods/resource/publish/
+[`permalink`]: /methods/resource/permalink/
+[`relpermalink`]: /methods/resource/relpermalink/
 
 Let's say you have a CSS file that you wish to populate with values from your site configuration:
 
@@ -49,8 +49,8 @@ Place this in your baseof.html template:
 The example above:
 
 1. Captures the template as a resource
-2. Executes the resource as a template, passing the current page in context
-3. Publishes the resource to css/main.css
+1. Executes the resource as a template, passing the current page in context
+1. Publishes the resource to css/main.css
 
 The result is:
 

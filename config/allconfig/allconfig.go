@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/gohugoio/hugo/cache/filecache"
+	"github.com/gohugoio/hugo/cache/httpcache"
 	"github.com/gohugoio/hugo/common/hugo"
 	"github.com/gohugoio/hugo/common/loggers"
 	"github.com/gohugoio/hugo/common/maps"
@@ -119,6 +120,10 @@ type Config struct {
 	// <docsmeta>{"identifiers": ["caches"] }</docsmeta>
 	Caches filecache.Configs `mapstructure:"-"`
 
+	// The httpcache configuration section contains HTTP-cache-related configuration options.
+	// <docsmeta>{"identifiers": ["httpcache"] }</docsmeta>
+	HTTPCache httpcache.Config `mapstructure:"-"`
+
 	// The markup configuration section contains markup-related configuration options.
 	// <docsmeta>{"identifiers": ["markup"] }</docsmeta>
 	Markup markup_config.Config `mapstructure:"-"`
@@ -138,7 +143,7 @@ type Config struct {
 
 	// The cascade configuration section contains the top level front matter cascade configuration options,
 	// a slice of page matcher and params to apply to those pages.
-	Cascade *config.ConfigNamespace[[]page.PageMatcherParamsConfig, map[page.PageMatcher]maps.Params] `mapstructure:"-"`
+	Cascade *config.ConfigNamespace[[]page.PageMatcherParamsConfig, *maps.Ordered[page.PageMatcher, maps.Params]] `mapstructure:"-"`
 
 	// The segments defines segments for the site. Used for partial/segmented builds.
 	Segments *config.ConfigNamespace[map[string]segments.SegmentConfig, segments.Segments] `mapstructure:"-"`
@@ -173,6 +178,12 @@ type Config struct {
 
 	// Server configuration.
 	Server config.Server `mapstructure:"-"`
+
+	// Pagination configuration.
+	Pagination config.Pagination `mapstructure:"-"`
+
+	// Page configuration.
+	Page config.PageConfig `mapstructure:"-"`
 
 	// Privacy configuration.
 	Privacy privacy.Config `mapstructure:"-"`
@@ -290,6 +301,18 @@ func (c *Config) CompileConfig(logger loggers.Logger) error {
 		}
 	}
 
+	defaultOutputFormat := outputFormats[0]
+	c.DefaultOutputFormat = strings.ToLower(c.DefaultOutputFormat)
+	if c.DefaultOutputFormat != "" {
+		f, found := outputFormats.GetByName(c.DefaultOutputFormat)
+		if !found {
+			return fmt.Errorf("unknown default output format %q", c.DefaultOutputFormat)
+		}
+		defaultOutputFormat = f
+	} else {
+		c.DefaultOutputFormat = defaultOutputFormat.Name
+	}
+
 	disabledLangs := make(map[string]bool)
 	for _, lang := range c.DisableLanguages {
 		disabledLangs[lang] = true
@@ -307,9 +330,13 @@ func (c *Config) CompileConfig(logger loggers.Logger) error {
 		}
 	}
 
+	for i, s := range c.IgnoreLogs {
+		c.IgnoreLogs[i] = strings.ToLower(s)
+	}
+
 	ignoredLogIDs := make(map[string]bool)
 	for _, err := range c.IgnoreLogs {
-		ignoredLogIDs[strings.ToLower(err)] = true
+		ignoredLogIDs[err] = true
 	}
 
 	baseURL, err := urls.NewBaseURLFromString(c.BaseURL)
@@ -359,22 +386,62 @@ func (c *Config) CompileConfig(logger loggers.Logger) error {
 		}
 	}
 
+	httpCache, err := c.HTTPCache.Compile()
+	if err != nil {
+		return err
+	}
+
+	// Legacy paginate values.
+	if c.Paginate != 0 {
+		hugo.Deprecate("site config key paginate", "Use pagination.pagerSize instead.", "v0.128.0")
+		c.Pagination.PagerSize = c.Paginate
+	}
+
+	if c.PaginatePath != "" {
+		hugo.Deprecate("site config key paginatePath", "Use pagination.path instead.", "v0.128.0")
+		c.Pagination.Path = c.PaginatePath
+	}
+
+	// Legacy privacy values.
+	if c.Privacy.Twitter.Disable {
+		hugo.Deprecate("site config key privacy.twitter.disable", "Use privacy.x.disable instead.", "v0.141.0")
+		c.Privacy.X.Disable = c.Privacy.Twitter.Disable
+	}
+
+	if c.Privacy.Twitter.EnableDNT {
+		hugo.Deprecate("site config key privacy.twitter.enableDNT", "Use privacy.x.enableDNT instead.", "v0.141.0")
+		c.Privacy.X.EnableDNT = c.Privacy.Twitter.EnableDNT
+	}
+
+	if c.Privacy.Twitter.Simple {
+		hugo.Deprecate("site config key privacy.twitter.simple", "Use privacy.x.simple instead.", "v0.141.0")
+		c.Privacy.X.Simple = c.Privacy.Twitter.Simple
+	}
+
+	// Legacy services values.
+	if c.Services.Twitter.DisableInlineCSS {
+		hugo.Deprecate("site config key services.twitter.disableInlineCSS", "Use services.x.disableInlineCSS instead.", "v0.141.0")
+		c.Services.X.DisableInlineCSS = c.Services.Twitter.DisableInlineCSS
+	}
+
 	c.C = &ConfigCompiled{
-		Timeout:           timeout,
-		BaseURL:           baseURL,
-		BaseURLLiveReload: baseURL,
-		DisabledKinds:     disabledKinds,
-		DisabledLanguages: disabledLangs,
-		IgnoredLogs:       ignoredLogIDs,
-		KindOutputFormats: kindOutputFormats,
-		ContentTypes:      media.DefaultContentTypes.FromTypes(c.MediaTypes.Config),
-		CreateTitle:       helpers.GetTitleFunc(c.TitleCaseStyle),
-		IsUglyURLSection:  isUglyURL,
-		IgnoreFile:        ignoreFile,
-		SegmentFilter:     c.Segments.Config.Get(func(s string) { logger.Warnf("Render segment %q not found in configuration", s) }, c.RootConfig.RenderSegments...),
-		MainSections:      c.MainSections,
-		Clock:             clock,
-		transientErr:      transientErr,
+		Timeout:             timeout,
+		BaseURL:             baseURL,
+		BaseURLLiveReload:   baseURL,
+		DisabledKinds:       disabledKinds,
+		DisabledLanguages:   disabledLangs,
+		IgnoredLogs:         ignoredLogIDs,
+		KindOutputFormats:   kindOutputFormats,
+		DefaultOutputFormat: defaultOutputFormat,
+		ContentTypes:        media.DefaultContentTypes.FromTypes(c.MediaTypes.Config),
+		CreateTitle:         helpers.GetTitleFunc(c.TitleCaseStyle),
+		IsUglyURLSection:    isUglyURL,
+		IgnoreFile:          ignoreFile,
+		SegmentFilter:       c.Segments.Config.Get(func(s string) { logger.Warnf("Render segment %q not found in configuration", s) }, c.RootConfig.RenderSegments...),
+		MainSections:        c.MainSections,
+		Clock:               clock,
+		HTTPCache:           httpCache,
+		transientErr:        transientErr,
 	}
 
 	for _, s := range allDecoderSetups {
@@ -398,21 +465,23 @@ func (c *Config) IsLangDisabled(lang string) bool {
 
 // ConfigCompiled holds values and functions that are derived from the config.
 type ConfigCompiled struct {
-	Timeout           time.Duration
-	BaseURL           urls.BaseURL
-	BaseURLLiveReload urls.BaseURL
-	ServerInterface   string
-	KindOutputFormats map[string]output.Formats
-	ContentTypes      media.ContentTypes
-	DisabledKinds     map[string]bool
-	DisabledLanguages map[string]bool
-	IgnoredLogs       map[string]bool
-	CreateTitle       func(s string) string
-	IsUglyURLSection  func(section string) bool
-	IgnoreFile        func(filename string) bool
-	SegmentFilter     segments.SegmentFilter
-	MainSections      []string
-	Clock             time.Time
+	Timeout             time.Duration
+	BaseURL             urls.BaseURL
+	BaseURLLiveReload   urls.BaseURL
+	ServerInterface     string
+	KindOutputFormats   map[string]output.Formats
+	DefaultOutputFormat output.Format
+	ContentTypes        media.ContentTypes
+	DisabledKinds       map[string]bool
+	DisabledLanguages   map[string]bool
+	IgnoredLogs         map[string]bool
+	CreateTitle         func(s string) string
+	IsUglyURLSection    func(section string) bool
+	IgnoreFile          func(filename string) bool
+	SegmentFilter       segments.SegmentFilter
+	MainSections        []string
+	Clock               time.Time
+	HTTPCache           httpcache.ConfigCompiled
 
 	// This is set to the last transient error found during config compilation.
 	// With themes/modules we compute the configuration in multiple passes, and
@@ -471,6 +540,13 @@ type RootConfig struct {
 	// By default, we put the default content language in the root and the others below their language ID, e.g. /no/.
 	// Set this to true to put all languages below their language ID.
 	DefaultContentLanguageInSubdir bool
+
+	// The default output format to use for the site.
+	// If not set, we will use the first output format.
+	DefaultOutputFormat string
+
+	// Disable generation of redirect to the default language when DefaultContentLanguageInSubdir is enabled.
+	DisableDefaultLanguageRedirect bool
 
 	// Disable creation of alias redirect pages.
 	DisableAliases bool
@@ -545,9 +621,11 @@ type RootConfig struct {
 	HasCJKLanguage bool
 
 	// The default number of pages per page when paginating.
+	// Deprecated: Use the Pagination struct.
 	Paginate int
 
 	// The path to use when creating pagination URLs, e.g. "page" in /page/2/.
+	// Deprecated: Use the Pagination struct.
 	PaginatePath string
 
 	// Whether to pluralize default list titles.
@@ -688,15 +766,16 @@ type Configs struct {
 }
 
 func (c *Configs) Validate(logger loggers.Logger) error {
-	for p := range c.Base.Cascade.Config {
+	c.Base.Cascade.Config.Range(func(p page.PageMatcher, params maps.Params) bool {
 		page.CheckCascadePattern(logger, p)
-	}
+		return true
+	})
 	return nil
 }
 
 // transientErr returns the last transient error found during config compilation.
 func (c *Configs) transientErr() error {
-	for _, l := range c.LanguageConfigSlice {
+	for _, l := range c.LanguageConfigMap {
 		if l.C.transientErr != nil {
 			return l.C.transientErr
 		}
@@ -713,7 +792,6 @@ func (c *Configs) Init() error {
 	var languages langs.Languages
 	defaultContentLanguage := c.Base.DefaultContentLanguage
 	for k, v := range c.LanguageConfigMap {
-		c.LanguageConfigSlice = append(c.LanguageConfigSlice, v)
 		languageConf := v.Languages[k]
 		language, err := langs.NewLanguage(k, defaultContentLanguage, v.TimeZone, languageConf)
 		if err != nil {
@@ -774,7 +852,7 @@ func (c *Configs) Init() error {
 	}
 
 	if len(c.Modules) == 0 {
-		return errors.New("no modules loaded (ned at least the main module)")
+		return errors.New("no modules loaded (need at least the main module)")
 	}
 
 	// Apply default project mounts.
@@ -853,29 +931,16 @@ func fromLoadConfigResult(fs afero.Fs, logger loggers.Logger, res config.LoadCon
 		var differentRootKeys []string
 		switch x := v.(type) {
 		case maps.Params:
-			var params maps.Params
-			pv, found := x["params"]
-			if found {
-				params = pv.(maps.Params)
-			} else {
-				params = maps.Params{
+			_, found := x["params"]
+			if !found {
+				x["params"] = maps.Params{
 					maps.MergeStrategyKey: maps.ParamsMergeStrategyDeep,
 				}
-				x["params"] = params
 			}
 
 			for kk, vv := range x {
 				if kk == "_merge" {
 					continue
-				}
-				if kk != maps.MergeStrategyKey && !configLanguageKeys[kk] {
-					// This should have been placed below params.
-					// We accidentally allowed it in the past, so we need to support it a little longer,
-					// But log a warning.
-					if _, found := params[kk]; !found {
-						hugo.Deprecate(fmt.Sprintf("config: languages.%s.%s: custom params on the language top level", k, kk), fmt.Sprintf("Put the value below [languages.%s.params]. See https://gohugo.io/content-management/multilingual/#changes-in-hugo-01120", k), "v0.112.0")
-						params[kk] = vv
-					}
 				}
 				if kk == "baseurl" {
 					// baseURL configure don the language level is a multihost setup.

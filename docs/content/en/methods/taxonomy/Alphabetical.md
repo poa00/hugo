@@ -11,9 +11,9 @@ action:
 toc: true
 ---
 
-The `Alphabetical` method on a `Taxonomy` object returns an [ordered taxonomy], sorted alphabetically by [term].
+The `Alphabetical` method on a `Taxonomy` object returns an [ordered taxonomy](g), sorted alphabetically by [term](g).
 
-While a `Taxonomy` object is a [map], an ordered taxonomy is a [slice], where each element is an object that contains the term and a slice of its [weighted pages].
+While a `Taxonomy` object is a [map](g), an ordered taxonomy is a [slice](g), where each element is an object that contains the term and a slice of its [weighted pages](g).
 
 {{% include "methods/taxonomy/_common/get-a-taxonomy-object.md" %}}
 
@@ -34,7 +34,7 @@ To reverse the sort order:
 To inspect the data structure:
 
 ```go-html-template
-<pre>{{ jsonify (dict "indent" "  ") $taxonomyObject.Alphabetical }}</pre>
+<pre>{{ debug.Dump $taxonomyObject.Alphabetical }}</pre>
 ```
 
 {{% include "methods/taxonomy/_common/ordered-taxonomy-element-methods.md" %}}
@@ -69,10 +69,3 @@ Hugo renders:
   <li><a href="/books/jamaica-inn/">Jamaica inn</a></li>
 </ul>
 ```
-
-[ordered taxonomy]: /getting-started/glossary/#ordered-taxonomy
-[term]: /getting-started/glossary/#term
-[map]: /getting-started/glossary/#map
-[slice]: /getting-started/glossary/#slice
-[term]: /getting-started/glossary/#term
-[weighted pages]: /getting-started/glossary/#weighted-page

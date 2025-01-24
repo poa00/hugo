@@ -75,7 +75,9 @@ See https://xyproto.github.io/splash/docs/all.html for a preview of the availabl
 					return err
 				}
 				formatter := html.New(html.WithAllClasses(true))
-				formatter.WriteCSS(os.Stdout, style)
+				w := os.Stdout
+				fmt.Fprintf(w, "/* Generated using: hugo %s */\n\n", strings.Join(os.Args[1:], " "))
+				formatter.WriteCSS(w, style)
 				return nil
 			},
 			withc: func(cmd *cobra.Command, r *rootCommand) {
@@ -273,7 +275,8 @@ func (c *genCommand) Run(ctx context.Context, cd *simplecobra.Commandeer, args [
 
 func (c *genCommand) Init(cd *simplecobra.Commandeer) error {
 	cmd := cd.CobraCommand
-	cmd.Short = "A collection of several useful generators."
+	cmd.Short = "Generate documentation and syntax highlighting styles"
+	cmd.Long = "Generate documentation for your project using Hugo's documentation engine, including syntax highlighting for various programming languages."
 
 	cmd.RunE = nil
 	return nil

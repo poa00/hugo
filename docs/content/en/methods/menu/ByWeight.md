@@ -9,9 +9,7 @@ action:
   signatures: [MENU.ByWeight]
 ---
 
-The `ByWeight` method returns the given menu with its entries sorted by [`weight`], then by `name`, then by `identifier`. This is the default sort order.
-
-[`weight`]: /getting-started/glossary/#weight
+The `ByWeight` method returns the given menu with its entries sorted by [`weight`](g), then by `name`, then by `identifier`. This is the default sort order.
 
 Consider this menu definition:
 
@@ -73,4 +71,4 @@ You can also sort menu entries using the [`sort`] function. For example, to sort
 
 When using the sort function with menu entries, specify any of the following keys: `Identifier`, `Name`, `Parent`, `Post`, `Pre`, `Title`, `URL`, or `Weight`.
 
-[`sort`]: /functions/collections/sort
+[`sort`]: /functions/collections/sort/

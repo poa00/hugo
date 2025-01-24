@@ -13,7 +13,17 @@ action:
   returnType: '[][]string'
   signatures: ['data.GetCSV SEPARATOR INPUT... [OPTIONS]']
 toc: true
+expiryDate: 2025-02-19 # deprecated 2024-02-19
 ---
+
+{{% deprecated-in 0.123.0 %}}
+Instead, use [`transform.Unmarshal`] with a [global resource](g), [page resource](g), or [remote resource](g).
+
+See the [remote data example].
+
+[`transform.Unmarshal`]: /functions/transform/unmarshal/
+[remote data example]: /functions/resources/getremote/#remote-data
+{{% /deprecated-in %}}
 
 Given the following directory structure:
 
@@ -31,9 +41,9 @@ Access the data with either of the following:
 ```
 
 {{% note %}}
-When working with local data, the filepath is relative to the working directory.
+When working with local data, the file path is relative to the working directory.
 
-You must not place CSV files in the project's data directory.
+You must not place CSV files in the project's `data` directory.
 {{% /note %}}
 
 Access remote data with either of the following:
@@ -81,7 +91,7 @@ my-project/
 ```
 
 ```go-html-template
-{{ $data := "" }}
+{{ $data := dict }}
 {{ $p := "data/pets.csv" }}
 {{ with resources.Get $p }}
   {{ $opts := dict "delimiter" "," }}
@@ -105,7 +115,7 @@ my-project/
 ```
 
 ```go-html-template
-{{ $data := "" }}
+{{ $data := dict }}
 {{ $p := "pets.csv" }}
 {{ with .Resources.Get $p }}
   {{ $opts := dict "delimiter" "," }}
@@ -120,21 +130,21 @@ my-project/
 Consider using the [`resources.GetRemote`] function with [`transform.Unmarshal`] when accessing a remote resource to improve error handling and cache control.
 
 ```go-html-template
-{{ $data := "" }}
-{{ $u := "https://example.org/pets.csv" }}
-{{ with resources.GetRemote $u }}
+{{ $data := dict }}
+{{ $url := "https://example.org/pets.csv" }}
+{{ with try (resources.GetRemote $url) }}
   {{ with .Err }}
     {{ errorf "%s" . }}
-  {{ else }}
+  {{ else with .Value }}
     {{ $opts := dict "delimiter" "," }}
     {{ $data = . | transform.Unmarshal $opts }}
+  {{ else }}
+    {{ errorf "Unable to get remote resource %q" $url }}
   {{ end }}
-{{ else }}
-  {{ errorf "Unable to get remote resource %q" $u }}
 {{ end }}
 ```
 
-[`Resources.Get`]: methods/page/Resources
-[`resources.GetRemote`]: /functions/resources/getremote
-[`resources.Get`]: /functions/resources/get
-[`transform.Unmarshal`]: /functions/transform/unmarshal
+[`Resources.Get`]: /methods/page/resources/
+[`resources.GetRemote`]: /functions/resources/getremote/
+[`resources.Get`]: /functions/resources/get/
+[`transform.Unmarshal`]: /functions/transform/unmarshal/

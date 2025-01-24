@@ -4,16 +4,22 @@ description: Transpiles Sass to CSS.
 categories: []
 keywords: []
 action:
-  aliases: [toCSS]
   related:
     - functions/resources/Fingerprint
     - functions/resources/Minify
-    - functions/resources/PostCSS
+    - functions/css/PostCSS
     - functions/resources/PostProcess
   returnType: resource.Resource
   signatures: ['resources.ToCSS [OPTIONS] RESOURCE']
 toc: true
+expiryDate: 2025-06-24 # deprecated 2024-06-24
 ---
+
+{{% deprecated-in 0.128.0 %}}
+Use [`css.Sass`] instead.
+
+[`css.Sass`]: /functions/css/sass/
+{{% /deprecated-in %}}
 
 ```go-html-template
 {{ with resources.Get "sass/main.scss" }}
@@ -30,7 +36,7 @@ toc: true
 {{ end }}
 ```
 
-Transpile Sass to CSS using the LibSass transpiler included in Hugo's extended edition, or [install Dart Sass](#dart-sass) to use the latest features of the Sass language.
+Transpile Sass to CSS using the LibSass transpiler included in Hugo's extended and extended/deploy editions, or [install Dart Sass](#dart-sass) to use the latest features of the Sass language.
 
 Sass has two forms of syntax: [SCSS] and [indented]. Hugo supports both.
 
@@ -40,13 +46,13 @@ Sass has two forms of syntax: [SCSS] and [indented]. Hugo supports both.
 ## Options
 
 transpiler
-: (`string`) The transpiler to use, either `libsass` (default) or `dartsass`. Hugo's extended edition includes the LibSass transpiler. To use the Dart Sass transpiler, see the [installation instructions](#dart-sass) below.
+: (`string`) The transpiler to use, either `libsass` (default) or `dartsass`. Hugo's extended and extended/deploy editions include the LibSass transpiler. To use the Dart Sass transpiler, see the [installation instructions](#dart-sass) below.
 
 targetPath
 : (`string`) If not set, the transformed resource's target path will be the original path of the asset file with its extension replaced by `.css`.
 
 vars
-: (`map`) A map of key/value pairs that will be available in the `hugo:vars` namespace. Useful for [initializing Sass variables from Hugo templates](https://discourse.gohugo.io/t/42053/).
+: (`map`) A map of key-value pairs that will be available in the `hugo:vars` namespace. Useful for [initializing Sass variables from Hugo templates](https://discourse.gohugo.io/t/42053/).
 
 ```scss
 // LibSass
@@ -76,7 +82,7 @@ includePaths
   "transpiler" "dartsass"
   "targetPath" "css/style.css"
   "vars" site.Params.styles
-  "enableSourceMap" (not hugo.IsProduction) 
+  "enableSourceMap" (not hugo.IsProduction)
   "includePaths" (slice "node_modules/bootstrap/scss")
 }}
 {{ with resources.Get "sass/main.scss" | toCSS $opts | minify | fingerprint }}
@@ -120,7 +126,7 @@ Run `hugo env` to list the active transpilers.
 
 For [CI/CD] deployments (e.g., GitHub Pages, GitLab Pages, Netlify, etc.) you must edit the workflow to install Dart Sass before Hugo builds the site[^2]. Some providers allow you to use one of the package managers above, or you can download and extract one of the prebuilt binaries.
 
-[^2]: You do not have to do this if (a) you have not modified the assets cache location, and (b) you have not set `useResourceCacheWhen` to `never` in your [site configuration], and (c) you add and commit your resources directory to your repository.
+[^2]: You do not have to do this if (a) you have not modified the assets cache location, and (b) you have not set `useResourceCacheWhen` to `never` in your [site configuration], and (c) you add and commit your `resources` directory to your repository.
 
 #### GitHub Pages
 
@@ -139,8 +145,8 @@ To install Dart Sass for your builds on GitLab Pages, the `.gitlab-ci.yml` file 
 
 ```yaml
 variables:
-  HUGO_VERSION: 0.122.0
-  DART_SASS_VERSION: 1.70.0
+  HUGO_VERSION: 0.141.0
+  DART_SASS_VERSION: 1.83.4
   GIT_DEPTH: 0
   GIT_STRATEGY: clone
   GIT_SUBMODULE_STRATEGY: recursive
@@ -173,8 +179,9 @@ To install Dart Sass for your builds on Netlify, the `netlify.toml` file should 
 
 ```toml
 [build.environment]
-HUGO_VERSION = "0.122.0"
-DART_SASS_VERSION = "1.70.0"
+HUGO_VERSION = "0.141.0"
+DART_SASS_VERSION = "1.83.4"
+NODE_VERSION = "22"
 TZ = "America/Los_Angeles"
 
 [build]

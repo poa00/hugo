@@ -6,13 +6,12 @@
     bgcolor      = "#ffffff"
 
 [[banners]]
-    name         = "CloudCannon"
-    link         = "https://cloudcannon.com/hugo-cms/"
-    logo         = "/images/sponsors/cloudcannon-white.svg"
-    utm_campaign = "HugoSponsorship"
-    utm_source   = "sponsor"
-    utm_content  = "gohugo"
-    bgcolor      = "#034AD8"
+    name            = "GoLand"
+    title           = "The complete IDE crafted for professional Go developers."
+    no_query_params = true
+    link            = "https://www.jetbrains.com/go/?utm_source=OSS&utm_medium=referral&utm_campaign=hugo"
+    logo            = "images/sponsors/goland.svg"
+    bgcolor         = "#f4f4f4"
 
 [[banners]]
     name          = "Your Company?"
@@ -20,3 +19,4 @@
     utm_campaign  = "hugosponsor"
     show_on_hover = true
     bgcolor       = "#4e4f4f"
+    link_attr     = "style='color: #ffffff; font-weight: bold; text-decoration: none; text-align: center'"

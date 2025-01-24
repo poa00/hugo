@@ -12,8 +12,6 @@ action:
 aliases: [/functions/urls.joinpath]
 ---
 
-{{< new-in 0.112.0 >}}
-
 ```go-html-template
 {{ urls.JoinPath }} → "" (empty string)
 {{ urls.JoinPath "" }} → /
@@ -27,4 +25,4 @@ aliases: [/functions/urls.joinpath]
 
 Unlike the [`path.Join`] function, `urls.JoinPath` retains consecutive leading slashes.
 
-[`path.Join`]: /functions/path/join
+[`path.Join`]: /functions/path/join/

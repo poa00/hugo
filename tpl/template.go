@@ -20,11 +20,13 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
 
 	bp "github.com/gohugoio/hugo/bufferpool"
 	"github.com/gohugoio/hugo/common/hcontext"
 	"github.com/gohugoio/hugo/identity"
+	"github.com/gohugoio/hugo/langs"
 	"github.com/gohugoio/hugo/output/layouts"
 
 	"github.com/gohugoio/hugo/output"
@@ -38,7 +40,6 @@ type TemplateManager interface {
 	TemplateHandler
 	TemplateFuncGetter
 	AddTemplate(name, tpl string) error
-	MarkReady() error
 }
 
 // TemplateVariants describes the possible variants of a template.
@@ -160,13 +161,17 @@ type TemplateFuncGetter interface {
 	GetFunc(name string) (reflect.Value, bool)
 }
 
+type RenderingContext struct {
+	Site       site
+	SiteOutIdx int
+}
+
 type contextKey string
 
 // Context manages values passed in the context to templates.
 var Context = struct {
 	DependencyManagerScopedProvider    hcontext.ContextDispatcher[identity.DependencyManagerScopedProvider]
 	GetDependencyManagerInCurrentScope func(context.Context) identity.Manager
-	SetDependencyManagerInCurrentScope func(context.Context, identity.Manager) context.Context
 	DependencyScope                    hcontext.ContextDispatcher[int]
 	Page                               hcontext.ContextDispatcher[page]
 	IsInGoldmark                       hcontext.ContextDispatcher[bool]
@@ -190,6 +195,15 @@ func init() {
 type page interface {
 	IsNode() bool
 }
+
+type site interface {
+	Language() *langs.Language
+}
+
+const (
+	HugoDeferredTemplatePrefix = "__hdeferred/"
+	HugoDeferredTemplateSuffix = "__d="
+)
 
 const hugoNewLinePlaceholder = "___hugonl_"
 
@@ -227,4 +241,14 @@ func StripHTML(s string) string {
 	}
 
 	return s
+}
+
+type DeferredExecution struct {
+	Mu           sync.Mutex
+	Ctx          context.Context
+	TemplateName string
+	Data         any
+
+	Executed bool
+	Result   string
 }
